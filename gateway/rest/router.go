@@ -28,7 +28,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 
 	manifest "github.com/akash-network/akash-api/go/manifest/v2beta2"
-	manifestValidation "github.com/akash-network/akash-api/go/manifest/v2beta2"
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta3"
 	"github.com/akash-network/node/util/wsutil"
@@ -571,17 +570,17 @@ func createManifestHandler(log log.Logger, mclient pmanifest.Client) http.Handle
 		subctx, cancel := context.WithTimeout(req.Context(), manifestSubmitTimeout)
 		defer cancel()
 		if err := mclient.Submit(subctx, requestDeploymentID(req), mani); err != nil {
-			if errors.Is(err, manifestValidation.ErrInvalidManifest) {
-				http.Error(w, err.Error(), http.StatusUnprocessableEntity)
-				return
-			}
+			// if errors.Is(err, manifestValidation.ErrInvalidManifest) {
+			// 	http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+			// 	return
+			// }
 			if errors.Is(err, pmanifest.ErrNoLeaseForDeployment) {
 				http.Error(w, err.Error(), http.StatusNotFound)
 				return
 			}
-			log.Error("manifest submit failed", "err", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			// log.Error("manifest submit failed", "err", err)
+			// http.Error(w, err.Error(), http.StatusInternalServerError)
+			// return
 		}
 	}
 }
