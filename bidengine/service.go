@@ -2,7 +2,11 @@ package bidengine
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io/ioutil"
+	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -250,4 +254,38 @@ func queryExistingOrders(ctx context.Context, session session.Session) ([]mtypes
 	}
 
 	return existingOrders, nil
+}
+
+func CheckForValidDepositor(deploymentDepositor string) (bool, error) {
+	// Move URL to config later
+	response, err := http.Get("https://mocki.io/v1/3b9a6c1e-1528-4548-a320-8c725388a04c")
+	if err != nil {
+		fmt.Println("Error making the request:", err)
+		return false, err
+	}
+	defer response.Body.Close()
+
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		fmt.Println("Error reading the response body:", err)
+		return false, err
+	}
+
+	var depositorsData DepositorsData
+	err = json.Unmarshal(body, &depositorsData)
+	if err != nil {
+		fmt.Println("Error parsing JSON:", err)
+		return false, err
+	}
+
+	exists := false
+
+	for _, v := range depositorsData.Depositors {
+		if v == deploymentDepositor {
+			exists = true
+			break
+		}
+	}
+
+	return exists, nil
 }

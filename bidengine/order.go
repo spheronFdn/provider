@@ -485,6 +485,24 @@ loop:
 }
 
 func (o *order) shouldBid(group *dtypes.Group) (bool, error) {
+	// Check if depositor one of Spheron's
+	dResp, err := o.session.Client().Query().Deployment(context.TODO(), &dtypes.QueryDeploymentRequest{
+		ID: group.GroupID.DeploymentID(),
+	})
+	if err != nil {
+		return false, err
+	}
+
+	isDepositorValid, err := CheckForValidDepositor(dResp.EscrowAccount.Depositor)
+	if err != nil {
+		return false, err
+	}
+
+	if !isDepositorValid {
+		o.log.Debug("unable to fulfill: bid not from spheron")
+		return false, nil
+	}
+
 	// does provider have required attributes?
 	if !group.GroupSpec.MatchAttributes(o.session.Provider().Attributes) {
 		o.log.Debug("unable to fulfill: incompatible provider attributes")
