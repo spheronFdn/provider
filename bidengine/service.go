@@ -258,7 +258,7 @@ func queryExistingOrders(ctx context.Context, session session.Session) ([]mtypes
 
 func CheckForValidDepositor(deploymentDepositor string) (bool, error) {
 	// Move URL to config later
-	response, err := http.Get("https://mocki.io/v1/3b9a6c1e-1528-4548-a320-8c725388a04c")
+	response, err := http.Get("https://owr4h3h3qiuay65htj3wquxlee0ulfal.lambda-url.us-east-1.on.aws/")
 	if err != nil {
 		fmt.Println("Error making the request:", err)
 		return false, err
