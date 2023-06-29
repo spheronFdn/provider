@@ -316,6 +316,7 @@ loop:
 					_, err := s.inventory.reserve(ev.LeaseID.OrderID(), mgroup)
 					if err != nil {
 						s.log.Error("Not enough resources in cluster for update", "err", err, "lease", ev.LeaseID, "group-name", mgroup.Name)
+						break
 					}
 					if err := manager.update(deployment); err != nil {
 						s.log.Error("updating deployment", "err", err, "lease", ev.LeaseID, "group-name", mgroup.Name)
