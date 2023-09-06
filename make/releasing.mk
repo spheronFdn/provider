@@ -32,7 +32,7 @@ build:
 
 .PHONY: $(PROVIDER_SERVICES)
 $(PROVIDER_SERVICES):
-	$(GO_BUILD) -o $@ $(BUILD_FLAGS) ./cmd/provider-services
+	$(GO_BUILD) CGO_ENABLED=0 -o $@ $(BUILD_FLAGS) ./cmd/provider-services 
 
 .PHONY: provider-services
 provider-services: $(PROVIDER_SERVICES)
