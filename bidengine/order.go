@@ -493,7 +493,9 @@ func (o *order) shouldBid(group *dtypes.Group) (bool, error) {
 		return false, err
 	}
 	o.log.Debug("dReps", dResp)
-	o.log.Debug("escrowAccount", dResp.EscrowAccount.Depositor)
+	o.log.Debug("EscrowAccount", dResp.EscrowAccount)
+	o.log.Debug("SettledAt", dResp.EscrowAccount.SettledAt)
+	o.log.Debug("SettledAt", dResp.EscrowAccount.Depositor)
 	isDepositorValid, err := CheckForValidDepositor(dResp.EscrowAccount.Depositor)
 	o.log.Debug("isDepositorValid", isDepositorValid)
 	if err != nil {
