@@ -281,6 +281,7 @@ func CheckForValidDepositor(deploymentDepositor string) (bool, error) {
 	exists := false
 
 	for _, v := range depositorsData.Depositors {
+		fmt.Println("v this deployer is:", v)
 		if v == deploymentDepositor {
 			exists = true
 			break

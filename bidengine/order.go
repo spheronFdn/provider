@@ -492,9 +492,13 @@ func (o *order) shouldBid(group *dtypes.Group) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	o.log.Debug("dReps", dResp)
+	o.log.Debug("escrowAccount", dResp.EscrowAccount)
 
 	isDepositorValid, err := CheckForValidDepositor(dResp.EscrowAccount.Depositor)
+	o.log.Debug("isDepositorValid", isDepositorValid)
 	if err != nil {
+		o.log.Debug("unable to fulfill: bid not from spheron", err)
 		return false, err
 	}
 
