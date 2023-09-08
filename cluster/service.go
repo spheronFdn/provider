@@ -312,12 +312,13 @@ loop:
 
 				key := ev.LeaseID
 				if manager := s.managers[key]; manager != nil {
-					s.log.Debug("Updating the deploymet, checking for resources", "lease", ev.LeaseID, "group-name", mgroup.Name)
-					_, err := s.inventory.reserve(ev.LeaseID.OrderID(), mgroup)
-					if err != nil {
-						s.log.Error("Not enough resources in cluster for update", "err", err, "lease", ev.LeaseID, "group-name", mgroup.Name)
-						break
-					}
+					// Modify the code below to check for cluster resuorces
+					// s.log.Debug("Updating the deploymet, checking for resources", "lease", ev.LeaseID, "group-name", mgroup.Name)
+					// _, err := s.inventory.reserve(ev.LeaseID.OrderID(), mgroup)
+					// if err != nil {
+					// s.log.Error("Not enough resources in cluster for update", "err", err, "lease", ev.LeaseID, "group-name", mgroup.Name)
+					// break
+					// }
 					if err := manager.update(deployment); err != nil {
 						s.log.Error("updating deployment", "err", err, "lease", ev.LeaseID, "group-name", mgroup.Name)
 					}
