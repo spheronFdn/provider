@@ -260,7 +260,7 @@ func CheckForValidDepositor(deploymentDepositor string) (bool, error) {
 	// Move URL to config later
 	response, err := http.Get("https://owr4h3h3qiuay65htj3wquxlee0ulfal.lambda-url.us-east-1.on.aws/")
 	if err != nil {
-		fmt.Println("Error making the request:", err)
+		fmt.Println("Error making the spheron deployers request:", err)
 		return false, err
 	}
 	defer response.Body.Close()
@@ -281,7 +281,6 @@ func CheckForValidDepositor(deploymentDepositor string) (bool, error) {
 	exists := false
 
 	for _, v := range depositorsData.Depositors {
-		fmt.Println("v this deployer is:", v)
 		if v == deploymentDepositor {
 			exists = true
 			break
