@@ -53,7 +53,7 @@ func (b *statefulSet) Create() (*appsv1.StatefulSet, error) { // nolint:golint,u
 					},
 					AutomountServiceAccountToken: &falseValue,
 					Containers:                   []corev1.Container{b.container()},
-					ImagePullSecrets:             b.imagePullSecrets(),
+					ImagePullSecrets:             b.privateImagePullSecrets(),
 				},
 			},
 			VolumeClaimTemplates: b.persistentVolumeClaims(),
@@ -71,7 +71,7 @@ func (b *statefulSet) Update(obj *appsv1.StatefulSet) (*appsv1.StatefulSet, erro
 	obj.Spec.Template.Spec.Affinity = b.affinity()
 	obj.Spec.Template.Spec.RuntimeClassName = b.runtimeClass()
 	obj.Spec.Template.Spec.Containers = []corev1.Container{b.container()}
-	obj.Spec.Template.Spec.ImagePullSecrets = b.imagePullSecrets()
+	obj.Spec.Template.Spec.ImagePullSecrets = b.privateImagePullSecrets()
 	obj.Spec.VolumeClaimTemplates = b.persistentVolumeClaims()
 
 	return obj, nil

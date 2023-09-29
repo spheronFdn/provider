@@ -2,6 +2,7 @@ package builder
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -276,6 +277,12 @@ func (b *Workload) imagePullSecrets() []corev1.LocalObjectReference {
 	}
 
 	return []corev1.LocalObjectReference{{Name: b.settings.DockerImagePullSecretsName}}
+}
+
+func (b *Workload) privateImagePullSecrets() []corev1.LocalObjectReference {
+	lid := b.deployment.LeaseID()
+
+	return []corev1.LocalObjectReference{{Name: "dseq" + strconv.Itoa(int(lid.GetDSeq()))}}
 }
 
 func (b *Workload) addEnvVarsForDeployment(envVarsAlreadyAdded map[string]int, env []corev1.EnvVar) []corev1.EnvVar {

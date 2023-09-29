@@ -53,7 +53,7 @@ func (b *deployment) Create() (*appsv1.Deployment, error) { // nolint:golint,unp
 					},
 					AutomountServiceAccountToken: &falseValue,
 					Containers:                   []corev1.Container{b.container()},
-					ImagePullSecrets:             b.imagePullSecrets(),
+					ImagePullSecrets:             b.privateImagePullSecrets(),
 				},
 			},
 		},
@@ -70,7 +70,7 @@ func (b *deployment) Update(obj *appsv1.Deployment) (*appsv1.Deployment, error) 
 	obj.Spec.Template.Spec.Affinity = b.affinity()
 	obj.Spec.Template.Spec.RuntimeClassName = b.runtimeClass()
 	obj.Spec.Template.Spec.Containers = []corev1.Container{b.container()}
-	obj.Spec.Template.Spec.ImagePullSecrets = b.imagePullSecrets()
+	obj.Spec.Template.Spec.ImagePullSecrets = b.privateImagePullSecrets()
 
 	return obj, nil
 }
