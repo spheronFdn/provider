@@ -363,7 +363,7 @@ func (s *service) ensureManager(did dtypes.DeploymentID) (manager *manager) {
 func fetchExistingLeases(ctx context.Context, session session.Session) ([]event.LeaseWon, error) {
 	params := &mtypes.QueryLeasesRequest{
 		Filters: mtypes.LeaseFilters{
-			Provider: session.Provider().Address().toString(),
+			Provider: session.Provider().Address(),
 			State:    mtypes.LeaseActive.String(),
 		},
 		Pagination: &sdkquery.PageRequest{
