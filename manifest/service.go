@@ -8,8 +8,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	"github.com/boz/go-lifecycle"
-
 	manifest "github.com/akash-network/akash-api/go/manifest/v2beta2"
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
@@ -64,7 +62,12 @@ type Service interface {
 // Manage incoming leases and manifests and pair the two together to construct and emit a ManifestReceived event.
 func NewService(ctx context.Context, session session.Session, bus pubsub.Bus, hostnameService clustertypes.HostnameServiceClient, cfg ServiceConfig) (Service, error) {
 	session = session.ForModule("provider-manifest")
-
+	leases, err := fetchExistingLeases(ctx, session)
+	if err != nil {
+		session.Log().Error("fetching existing leases", "err", err)
+		return nil, err
+	}
+	session.Log().Info("found existing leases", "count", len(leases))
 	sub, err := bus.Subscribe()
 	if err != nil {
 		return nil, err
@@ -88,7 +91,7 @@ func NewService(ctx context.Context, session session.Session, bus pubsub.Bus, ho
 	}
 
 	go s.lc.WatchContext(ctx)
-	go s.run()
+	go s.run(leases)
 
 	return s, nil
 }
@@ -215,11 +218,12 @@ func (s *service) Status(ctx context.Context) (*Status, error) {
 	}
 }
 
-func (s *service) run() {
+func (s *service) run(leases []event.LeaseWon) {
 	defer s.lc.ShutdownCompleted()
 	defer s.sub.Close()
 
 	s.updateGauges()
+	s.managePreExistingLease(leases)
 loop:
 	for {
 		select {
@@ -322,6 +326,13 @@ func (s *service) maybeRemoveWatchdog(deploymentID dtypes.DeploymentID) {
 	}
 }
 
+func (s *service) managePreExistingLease(leases []event.LeaseWon) {
+	for _, lease := range leases {
+		s.handleLease(lease, false)
+		s.updateGauges()
+	}
+}
+
 func (s *service) handleLease(ev event.LeaseWon, isNew bool) {
 	// Only run this if configured to do so
 	if isNew && s.config.ManifestTimeout > time.Duration(0) {
@@ -344,4 +355,45 @@ func (s *service) ensureManager(did dtypes.DeploymentID) (manager *manager) {
 		s.managers[dquery.DeploymentPath(did)] = manager
 	}
 	return manager
+}
+
+func fetchExistingLeases(ctx context.Context, session session.Session) ([]event.LeaseWon, error) {
+	params := &mtypes.QueryLeasesRequest{
+		Filters: mtypes.LeaseFilters{
+			Provider: session.Provider().Address().toString(),
+			State:    mtypes.LeaseActive.String(),
+		},
+		Pagination: &sdkquery.PageRequest{
+			Limit: 10000,
+		},
+	}
+	leases, err := session.Client().Query().Leases(context.Background(), params)
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]event.LeaseWon, 0, len(leases))
+	for _, lease := range leases {
+		res, err := session.Client().Query().Group(
+			ctx,
+			&dtypes.QueryGroupRequest{
+				ID: lease.Lease.LeaseID.GroupID(),
+			},
+		)
+		if err != nil {
+			session.Log().Error("can't fetch deployment group", "err", err, "lease", lease)
+			continue
+		}
+		dgroup := res.Group
+
+		items = append(items, event.LeaseWon{
+			LeaseID: lease.Lease.LeaseID,
+			Price:   lease.Lease.Price,
+			Group:   &dgroup,
+		})
+	}
+
+	session.Log().Debug("fetching leases", "lease-count", len(items))
+
+	return items, nil
 }
