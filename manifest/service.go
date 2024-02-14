@@ -7,9 +7,12 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	
+	"github.com/boz/go-lifecycle"
 
 	manifest "github.com/akash-network/akash-api/go/manifest/v2beta2"
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
+	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
 	"github.com/akash-network/node/pubsub"
 	dquery "github.com/akash-network/node/x/deployment/query"
@@ -367,10 +370,12 @@ func fetchExistingLeases(ctx context.Context, session session.Session) ([]event.
 			Limit: 10000,
 		},
 	}
-	leases, err := session.Client().Query().Leases(context.Background(), params)
+	// Call the Leases method and get the result
+	leasesSearchResult, err := session.Client().Query().Leases(context.Background(), params)
 	if err != nil {
 		return nil, err
 	}
+	leases := leasesSearchResult.Leases
 
 	items := make([]event.LeaseWon, 0, len(leases))
 	for _, lease := range leases {
