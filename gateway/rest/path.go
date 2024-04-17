@@ -12,6 +12,7 @@ const (
 	hostnamePrefix       = "/hostname"
 	endpointPrefix       = "/endpoint"
 	migratePathPrefix    = "/migrate"
+	bidPathPrefix        = "/bid"
 )
 
 func versionPath() string {

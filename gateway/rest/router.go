@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -31,7 +32,9 @@ import (
 	manifestValidation "github.com/akash-network/akash-api/go/manifest/v2beta2"
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
+	"github.com/akash-network/akash-api/go/sdkutil"
 
+	"github.com/akash-network/node/pubsub"
 	"github.com/akash-network/node/util/wsutil"
 
 	"github.com/akash-network/provider"
@@ -124,6 +127,12 @@ func newRouter(log log.Logger, addr sdk.Address, pclient provider.Client, ctxCon
 	vrouter.HandleFunc("/wiboy",
 		validateHandler(log, pclient)).
 		Methods("GET")
+
+	// PUT
+	bidRouter := router.PathPrefix(bidPathPrefix).Subrouter()
+	bidRouter.HandleFunc("/",
+		createDeploymentCreateHandler(log, pclient.Bus())).
+		Methods(http.MethodPut)
 
 	hostnameRouter := router.PathPrefix(hostnamePrefix).Subrouter()
 	hostnameRouter.Use(requireOwner())
@@ -585,6 +594,24 @@ func createManifestHandler(log log.Logger, mclient pmanifest.Client) http.Handle
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+	}
+}
+
+func createDeploymentCreateHandler(log log.Logger, bus pubsub.Bus) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+
+		defer func() {
+			_ = req.Body.Close()
+		}()
+
+		intrand := rand.Uint64()
+
+		bus.Publish(mtypes.EventOrderCreated{Context: sdkutil.BaseModuleEvent{Module: "market", Action: "bid-created"}, ID: mtypes.OrderID{
+			Owner: "akash1pee5q0cssauxmfzth05juwdaz303gczrp74x39",
+			DSeq:  intrand,
+			GSeq:  1,
+			OSeq:  1,
+		}})
 	}
 }
 

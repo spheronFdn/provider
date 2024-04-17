@@ -26,7 +26,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	ctypes "github.com/akash-network/akash-api/go/node/cert/v1beta3"
 	mparams "github.com/akash-network/akash-api/go/node/market/v1beta4"
 	ptypes "github.com/akash-network/akash-api/go/node/provider/v1beta3"
 	"github.com/akash-network/node/cmd/common"
@@ -567,26 +566,26 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	x509cert, tlsCert, err := kpm.ReadX509KeyPair(certFromFlag)
+	_, tlsCert, err := kpm.ReadX509KeyPair(certFromFlag)
 	if err != nil {
 		return err
 	}
 
 	// Check that the certificate exists on chain and is not revoked
-	cresp, err := cl.Query().Certificates(cmd.Context(), &ctypes.QueryCertificatesRequest{
-		Filter: ctypes.CertificateFilter{
-			Owner:  cctx.FromAddress.String(),
-			Serial: x509cert.SerialNumber.String(),
-			State:  "valid",
-		},
-	})
-	if err != nil {
-		return err
-	}
+	// cresp, err := cl.Query().Certificates(cmd.Context(), &ctypes.QueryCertificatesRequest{
+	// 	Filter: ctypes.CertificateFilter{
+	// 		Owner:  cctx.FromAddress.String(),
+	// 		Serial: x509cert.SerialNumber.String(),
+	// 		State:  "valid",
+	// 	},
+	// })
+	// if err != nil {
+	// 	return err
+	// }
 
-	if len(cresp.Certificates) == 0 {
-		return errors.Errorf("no valid found on chain certificate for account %s", cctx.FromAddress)
-	}
+	// if len(cresp.Certificates) == 0 {
+	// 	return errors.Errorf("no valid found on chain certificate for account %s", cctx.FromAddress)
+	// }
 
 	res, err := cl.Query().Provider(
 		cmd.Context(),
@@ -597,6 +596,8 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 	}
 
 	pinfo := &res.Provider
+
+	fmt.Printf("Provider info %+v\n", pinfo)
 
 	// k8s client creation
 	kubeSettings := builder.NewDefaultSettings()

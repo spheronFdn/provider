@@ -49,6 +49,7 @@ type Client interface {
 	Cluster() cluster.Client
 	Hostname() ctypes.HostnameServiceClient
 	ClusterService() cluster.Service
+	Bus() pubsub.Bus
 }
 
 // Service is the interface that includes StatusClient interface.
@@ -199,6 +200,10 @@ func (s *service) Manifest() manifest.Client {
 
 func (s *service) Cluster() cluster.Client {
 	return s.cclient
+}
+
+func (s *service) Bus() pubsub.Bus {
+	return s.bus
 }
 
 func (s *service) Status(ctx context.Context) (*Status, error) {

@@ -203,6 +203,8 @@ loop:
 			break loop
 
 		case ev := <-s.sub.Events():
+			s.session.Log().Info("SERVICE", "order", ev)
+
 			switch ev := ev.(type) { // nolint: gocritic
 			case mtypes.EventOrderCreated:
 				// new order

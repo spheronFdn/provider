@@ -2,6 +2,7 @@ package rest
 
 import (
 	"crypto/ecdsa"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -76,6 +77,9 @@ func requireOwner() mux.MiddlewareFunc {
 			// at this point client certificate has been validated
 			// so only thing left to do is get account id stored in the CommonName
 			owner, err := sdk.AccAddressFromBech32(r.TLS.PeerCertificates[0].Subject.CommonName)
+
+			fmt.Printf("requireOwner %+v\n", owner)
+
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
@@ -110,6 +114,8 @@ func requireLeaseID() mux.MiddlewareFunc {
 				return
 			}
 
+			fmt.Printf("requireLeaseID %+v\n", id)
+
 			context.Set(req, leaseContextKey, id)
 			next.ServeHTTP(w, req)
 		})
@@ -143,6 +149,8 @@ func parseDeploymentID(req *http.Request) (dtypes.DeploymentID, error) {
 func parseLeaseID(req *http.Request) (mtypes.LeaseID, error) {
 	vars := mux.Vars(req)
 
+	fmt.Printf("parseLeaseID %+v\n", vars)
+
 	parts := []string{
 		requestOwner(req).String(),
 		vars["dseq"],
@@ -150,6 +158,8 @@ func parseLeaseID(req *http.Request) (mtypes.LeaseID, error) {
 		vars["oseq"],
 		requestProvider(req).String(),
 	}
+
+	fmt.Printf("parseLeaseID parts %+v\n", parts)
 
 	return mquery.ParseLeasePath(parts)
 }
