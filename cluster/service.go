@@ -350,7 +350,7 @@ loop:
 					s.log.Error("indeterminate manifest group", "lease", ev.LeaseID, "group-name", ev.Group.GroupSpec.Name)
 					break
 				}
-
+				// STANIS
 				reservation, err := s.inventory.lookup(ev.LeaseID.OrderID(), mgroup)
 
 				if err != nil {

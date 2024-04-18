@@ -7,7 +7,7 @@ PROVIDER_CONFIG_PATH ?= provider.yaml
 
 SDL_PATH ?= deployment.yaml
 
-DSEQ           ?= 7
+DSEQ           ?= 15
 GSEQ           ?= 1
 OSEQ           ?= 1
 PRICE          ?= 10uakt

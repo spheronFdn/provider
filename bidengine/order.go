@@ -24,6 +24,7 @@ import (
 	ctypes "github.com/akash-network/provider/cluster/types/v1beta3"
 	"github.com/akash-network/provider/event"
 	"github.com/akash-network/provider/session"
+	"github.com/akash-network/provider/spheron"
 )
 
 // order manages bidding and general lifecycle handling of an order.
@@ -77,7 +78,7 @@ var (
 		Help: "",
 	}, []string{"result"})
 
-	helperClient = NewHelperClient("http://localhost:8088")
+	spheronClient = spheron.NewHelperClient("http://localhost:8088")
 )
 
 func newOrder(svc *service, oid mtypes.OrderID, cfg Config, pass ProviderAttrSignatureService, checkForExistingBid bool) (*order, error) {
@@ -174,29 +175,32 @@ func (o *order) run(checkForExistingBid bool) {
 		msg *mtypes.MsgCreateBid
 	)
 
-	//ILIJA FIX
+	//ILIJA FIX 1
 	// Begin fetching group details immediately.
 	// groupch = runner.Do(func() runner.Result {
 	// 	res, err := o.session.Client().Query().Group(ctx, &dtypes.QueryGroupRequest{ID: o.orderID.GroupID()})
 	// 	return runner.NewResult(res.GetGroup(), err)
 	// })
+	//ILIJA FIX 2
 
 	groupch = runner.Do(func() runner.Result {
-		res, err := helperClient.GetGroup(o.orderID.GroupID().DSeq)
+		res, err := spheronClient.GetGroup(ctx, o.orderID.GroupID().DSeq)
 		return runner.NewResult(res, err)
 	})
 
 	// Load existing bid if needed
 	if checkForExistingBid {
 		queryBidCh = runner.Do(func() runner.Result {
-			//ILIJA FIX
+			//ILIJA FIX 1
 			// return runner.NewResult(o.session.Client().Query().Bid(
 			// 	ctx,
 			// 	&mtypes.QueryBidRequest{
 			// 		ID: mtypes.MakeBidID(o.orderID, o.session.Provider().Address()),
 			// 	},
 			// ))
-			res, err := helperClient.GetBid(o.orderID.GroupID().DSeq)
+			//ILIJA FIX 2
+
+			res, err := spheronClient.GetBid(ctx, o.orderID.GroupID().DSeq)
 			return runner.NewResult(res, err)
 		})
 		// Hide the group details result for later
@@ -428,14 +432,16 @@ loop:
 				break loop
 			}
 
-			//ILIJA FIX
+			//ILIJA FIX 1
 			// bidch = runner.Do(func() runner.Result {
 			// 	return runner.NewResult(o.session.Client().Tx().Broadcast(ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError()))
 			// })
+			//ILIJA FIX 2
 
-			helperClient.SendPostRequest("/bid", *msg)
+			spheronClient.SendPostRequest(ctx, "/bid", *msg)
 
 		case result := <-bidch:
+			fmt.Printf("STANIS BID CHANNEL RESULT %+v\n", result)
 			bidch = nil
 			if result.Error() != nil {
 				bidCounter.WithLabelValues(metricsutils.OpenLabel, metricsutils.FailLabel).Inc()

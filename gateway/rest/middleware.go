@@ -69,14 +69,16 @@ func requestDeploymentID(req *http.Request) dtypes.DeploymentID {
 func requireOwner() mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
-				http.Error(w, "", http.StatusUnauthorized)
-				return
-			}
+			// ILIJA FIX 1
+			// if r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
+			// 	http.Error(w, "", http.StatusUnauthorized)
+			// 	return
+			// }
+			// ILIJA FIX 2
 
-			// at this point client certificate has been validated
-			// so only thing left to do is get account id stored in the CommonName
-			owner, err := sdk.AccAddressFromBech32(r.TLS.PeerCertificates[0].Subject.CommonName)
+			// // at this point client certificate has been validated
+			// // so only thing left to do is get account id stored in the CommonName
+			owner, err := sdk.AccAddressFromBech32("akash1qpwhcppf8qsvjsrs78mnldz0up4l49krsmnzc6")
 
 			fmt.Printf("requireOwner %+v\n", owner)
 

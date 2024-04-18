@@ -1,7 +1,8 @@
-package bidengine
+package spheron
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,7 +22,7 @@ func NewHelperClient(baseURL string) *HelperClient {
 	return &HelperClient{BaseURL: baseURL}
 }
 
-func (client *HelperClient) SendRequest(endpoint string) ([]byte, error) {
+func (client *HelperClient) SendRequest(ctx context.Context, endpoint string) ([]byte, error) {
 	url := client.BaseURL + endpoint
 	resp, err := http.Get(url)
 	if err != nil {
@@ -41,7 +42,7 @@ func (client *HelperClient) SendRequest(endpoint string) ([]byte, error) {
 	return body, nil
 }
 
-func (client *HelperClient) SendPostRequest(endpoint string, data interface{}) ([]byte, error) {
+func (client *HelperClient) SendPostRequest(ctx context.Context, endpoint string, data interface{}) ([]byte, error) {
 	url := client.BaseURL + endpoint
 	jsonData, err := json.Marshal(data)
 	if err != nil {
@@ -66,10 +67,10 @@ func (client *HelperClient) SendPostRequest(endpoint string, data interface{}) (
 	return body, nil
 }
 
-func (client *HelperClient) GetGroup(dseq uint64) (dtypes.Group, error) {
+func (client *HelperClient) GetGroup(ctx context.Context, dseq uint64) (dtypes.Group, error) {
 	endpoint := fmt.Sprintf("/groups/%d", dseq)
 
-	responseData, err := client.SendRequest(endpoint)
+	responseData, err := client.SendRequest(ctx, endpoint)
 	if err != nil {
 		return dtypes.Group{}, fmt.Errorf("error sending request JSON: %v", err)
 
@@ -82,8 +83,8 @@ func (client *HelperClient) GetGroup(dseq uint64) (dtypes.Group, error) {
 	return group, nil
 }
 
-func (client *HelperClient) CreateBid(bidMsg v1beta4.MsgCreateBid) (interface{}, error) {
-	resp, err := client.SendPostRequest("/bid", bidMsg)
+func (client *HelperClient) CreateBid(ctx context.Context, bidMsg v1beta4.MsgCreateBid) (interface{}, error) {
+	resp, err := client.SendPostRequest(ctx, "/bid", bidMsg)
 
 	var respObj interface{}
 	if err := json.Unmarshal(resp, &respObj); err != nil {
@@ -93,15 +94,47 @@ func (client *HelperClient) CreateBid(bidMsg v1beta4.MsgCreateBid) (interface{},
 	return respObj, err
 }
 
-func (client *HelperClient) GetBid(dseq uint64) (*v1beta4.QueryBidResponse, error) {
+func (client *HelperClient) GetBid(ctx context.Context, dseq uint64) (*v1beta4.QueryBidResponse, error) {
 	endpoint := fmt.Sprintf("/bid/%d", dseq)
 
-	responseData, err := client.SendRequest(endpoint)
+	responseData, err := client.SendRequest(ctx, endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("error sending request JSON: %v", err)
 	}
 
 	var response v1beta4.QueryBidResponse
+	if err := json.Unmarshal(responseData, &response); err != nil {
+		return nil, fmt.Errorf("error decoding JSON: %v", err)
+	}
+
+	return &response, nil
+}
+
+func (client *HelperClient) GetDeployment(ctx context.Context, dseq uint64) (*dtypes.QueryDeploymentResponse, error) {
+	endpoint := fmt.Sprintf("/deployment/%d", dseq)
+
+	responseData, err := client.SendRequest(ctx, endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("error sending request JSON: %v", err)
+	}
+
+	var response dtypes.QueryDeploymentResponse
+	if err := json.Unmarshal(responseData, &response); err != nil {
+		return nil, fmt.Errorf("error decoding JSON: %v", err)
+	}
+
+	return &response, nil
+}
+
+func (client *HelperClient) GetLeases(ctx context.Context, dseq uint64) (*v1beta4.QueryLeasesResponse, error) {
+	endpoint := fmt.Sprintf("/leases?dseq=%d&gseq=%d&oseq=%d", dseq, 1, 1)
+
+	responseData, err := client.SendRequest(ctx, endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("error sending request JSON: %v", err)
+	}
+
+	var response v1beta4.QueryLeasesResponse
 	if err := json.Unmarshal(responseData, &response); err != nil {
 		return nil, fmt.Errorf("error decoding JSON: %v", err)
 	}

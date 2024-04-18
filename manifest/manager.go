@@ -1,7 +1,6 @@
 package manifest
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"fmt"
@@ -21,6 +20,7 @@ import (
 	clustertypes "github.com/akash-network/provider/cluster/types/v1beta3"
 	"github.com/akash-network/provider/event"
 	"github.com/akash-network/provider/session"
+	"github.com/akash-network/provider/spheron"
 )
 
 const (
@@ -37,6 +37,8 @@ var (
 	ErrNoLeaseForDeployment    = errors.New("no lease for deployment")
 	errNoGroupForLease         = errors.New("group not found")
 	errManifestRejected        = errors.New("manifest rejected")
+
+	spheronClient = spheron.NewHelperClient("http://localhost:8088")
 )
 
 func newManager(h *service, daddr dtypes.DeploymentID) *manager {
@@ -253,24 +255,29 @@ type manifestManagerFetchDataResult struct {
 func (m *manager) doFetchData(ctx context.Context) (manifestManagerFetchDataResult, error) {
 	subctx, cancel := context.WithTimeout(ctx, m.config.RPCQueryTimeout)
 	defer cancel()
-	//ILIJA FIX
-	deploymentResponse, err := m.session.Client().Query().Deployment(subctx, &dtypes.QueryDeploymentRequest{ID: m.daddr})
+	// ILIJA FIX 1
+	// deploymentResponse, err := m.session.Client().Query().Deployment(subctx, &dtypes.QueryDeploymentRequest{ID: m.daddr})
+	// ILIJA FIX 2
+
+	deploymentResponse, err := spheronClient.GetDeployment(subctx, m.daddr.DSeq)
 	if err != nil {
 		return manifestManagerFetchDataResult{}, err
 	}
+	// Ilija FIX 1
+	// leasesResponse, err := m.session.Client().Query().Leases(subctx, &mtypes.QueryLeasesRequest{
+	// 	Filters: mtypes.LeaseFilters{
+	// 		Owner:    m.daddr.Owner,
+	// 		DSeq:     m.daddr.DSeq,
+	// 		GSeq:     0,
+	// 		OSeq:     0,
+	// 		Provider: m.session.Provider().GetOwner(),
+	// 		State:    mtypes.LeaseActive.String(),
+	// 	},
+	// 	Pagination: nil,
+	// })
+	// Ilija FIX 1
 
-	leasesResponse, err := m.session.Client().Query().Leases(subctx, &mtypes.QueryLeasesRequest{
-		Filters: mtypes.LeaseFilters{
-			Owner:    m.daddr.Owner,
-			DSeq:     m.daddr.DSeq,
-			GSeq:     0,
-			OSeq:     0,
-			Provider: m.session.Provider().GetOwner(),
-			State:    mtypes.LeaseActive.String(),
-		},
-		Pagination: nil,
-	})
-
+	leasesResponse, err := spheronClient.GetLeases(subctx, m.daddr.DSeq)
 	if err != nil {
 		return manifestManagerFetchDataResult{}, err
 	}
@@ -411,27 +418,27 @@ func (m *manager) validateRequest(req manifestRequest) error {
 
 	// ensure that an uploaded manifest matches the hash declared on
 	// the Akash Deployment.Version
-	version, err := req.value.Manifest.Version()
-	if err != nil {
-		return err
-	}
+	// version, err := req.value.Manifest.Version()
+	// if err != nil {
+	// 	return err
+	// }
 
-	var versionExpected []byte
+	// var versionExpected []byte
 
-	if len(m.versions) != 0 {
-		versionExpected = m.versions[len(m.versions)-1]
-	} else {
-		versionExpected = m.data.Deployment.Version
-	}
+	// if len(m.versions) != 0 {
+	// 	versionExpected = m.versions[len(m.versions)-1]
+	// } else {
+	// 	versionExpected = m.data.Deployment.Version
+	// }
 
-	if !bytes.Equal(version, versionExpected) {
-		m.log.Info("deployment version mismatch", "expected", m.data.Deployment.Version, "got", version)
-		return ErrManifestVersion
-	}
+	// if !bytes.Equal(version, versionExpected) {
+	// 	m.log.Info("deployment version mismatch", "expected", m.data.Deployment.Version, "got", version)
+	// 	return ErrManifestVersion
+	// }
 
-	if err = req.value.Manifest.CheckAgainstDeployment(m.data.Groups); err != nil {
-		return err
-	}
+	// if err = req.value.Manifest.CheckAgainstDeployment(m.data.Groups); err != nil {
+	// 	return err
+	// }
 
 	groupNames := make([]string, 0)
 
@@ -440,7 +447,7 @@ func (m *manager) validateRequest(req manifestRequest) error {
 	}
 
 	// Check that hostnames are not in use
-	if err = m.checkHostnamesForManifest(req.value.Manifest, groupNames); err != nil {
+	if err := m.checkHostnamesForManifest(req.value.Manifest, groupNames); err != nil {
 		return err
 	}
 

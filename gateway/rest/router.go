@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -608,11 +607,11 @@ func createDeploymentCreateHandler(log log.Logger, bus pubsub.Bus) http.HandlerF
 			_ = req.Body.Close()
 		}()
 
-		intrand := rand.Uint64()
+		// intrand := rand.Uint64()
 
 		bus.Publish(mtypes.EventOrderCreated{Context: sdkutil.BaseModuleEvent{Module: "market", Action: "bid-created"}, ID: mtypes.OrderID{
-			Owner: "akash1pee5q0cssauxmfzth05juwdaz303gczrp74x39",
-			DSeq:  intrand,
+			Owner: "akash1qpwhcppf8qsvjsrs78mnldz0up4l49krsmnzc6",
+			DSeq:  15,
 			GSeq:  1,
 			OSeq:  1,
 		}})
@@ -636,11 +635,11 @@ func createLeasetCreateHandler(log log.Logger, bus pubsub.Bus) http.HandlerFunc 
 		}
 
 		bus.Publish(mtypes.EventLeaseCreated{Context: sdkutil.BaseModuleEvent{Module: "market", Action: "lease-created"}, ID: mtypes.LeaseID{
-			Owner:    "akash1pee5q0cssauxmfzth05juwdaz303gczrp74x39",
+			Owner:    "akash1qpwhcppf8qsvjsrs78mnldz0up4l49krsmnzc6",
 			DSeq:     request.Dseq,
 			GSeq:     1,
 			OSeq:     1,
-			Provider: "akash17nhp3eglwgzgp34tc925l3me82jxaa49kyp46l",
+			Provider: "akash1vcgdh56ujtym8umkw3hj028aqu892qydsralwp",
 		}, Price: sdk.DecCoin{
 			Denom:  "uakt",
 			Amount: types.OneDec(),

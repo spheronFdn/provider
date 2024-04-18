@@ -15,7 +15,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	mani "github.com/akash-network/akash-api/go/manifest/v2beta2"
-	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
 	"github.com/akash-network/node/pubsub"
 
 	kubeclienterrors "github.com/akash-network/provider/cluster/kube/errors"
@@ -337,6 +336,7 @@ func (dm *deploymentManager) doDeploy(ctx context.Context) ([]string, []string, 
 		cancel()
 	}()
 
+	// ILIJA TU SMO
 	if err = dm.checkLeaseActive(ctx); err != nil {
 		return nil, nil, err
 	}
@@ -560,32 +560,32 @@ func (dm *deploymentManager) doTeardown(ctx context.Context) error {
 }
 
 func (dm *deploymentManager) checkLeaseActive(ctx context.Context) error {
-	var lease *mtypes.QueryLeaseResponse
+	// var lease *mtypes.QueryLeaseResponse
 
-	err := retry.Do(func() error {
-		var err error
-		lease, err = dm.session.Client().Query().Lease(ctx, &mtypes.QueryLeaseRequest{
-			ID: dm.deployment.LeaseID(),
-		})
-		if err != nil {
-			dm.log.Error("lease query failed", "err")
-		}
-		return err
-	},
-		retry.Attempts(50),
-		retry.Delay(100*time.Millisecond),
-		retry.MaxDelay(3000*time.Millisecond),
-		retry.DelayType(retry.BackOffDelay),
-		retry.LastErrorOnly(true))
+	// err := retry.Do(func() error {
+	// 	var err error
+	// 	lease, err = dm.session.Client().Query().Lease(ctx, &mtypes.QueryLeaseRequest{
+	// 		ID: dm.deployment.LeaseID(),
+	// 	})
+	// 	if err != nil {
+	// 		dm.log.Error("lease query failed", "err")
+	// 	}
+	// 	return err
+	// },
+	// 	retry.Attempts(50),
+	// 	retry.Delay(100*time.Millisecond),
+	// 	retry.MaxDelay(3000*time.Millisecond),
+	// 	retry.DelayType(retry.BackOffDelay),
+	// 	retry.LastErrorOnly(true))
 
-	if err != nil {
-		return err
-	}
+	// if err != nil {
+	// 	return err
+	// }
 
-	if lease.GetLease().State != mtypes.LeaseActive {
-		dm.log.Error("lease not active, not deploying")
-		return fmt.Errorf("%w: %s", ErrLeaseInactive, dm.deployment.LeaseID())
-	}
+	// if lease.GetLease().State != mtypes.LeaseActive {
+	// 	dm.log.Error("lease not active, not deploying")
+	// 	return fmt.Errorf("%w: %s", ErrLeaseInactive, dm.deployment.LeaseID())
+	// }
 
 	return nil
 }

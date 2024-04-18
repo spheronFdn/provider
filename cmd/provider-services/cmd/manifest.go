@@ -1,19 +1,15 @@
 package cmd
 
 import (
-	"bytes"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	"github.com/akash-network/node/sdl"
 	cutils "github.com/akash-network/node/x/cert/utils"
 
@@ -79,73 +75,82 @@ func doSendManifest(cmd *cobra.Command, sdlpath string) error {
 	}
 
 	// owner address in FlagFrom has already been validated thus save to just pull its value as string
-	leases, err := leasesForDeployment(cmd.Context(), cl, cmd.Flags(), dtypes.DeploymentID{
-		Owner: cctx.GetFromAddress().String(),
-		DSeq:  dseq,
-	})
-	if err != nil {
-		return markRPCServerError(err)
-	}
+	// leases, err := leasesForDeployment(cmd.Context(), cl, cmd.Flags(), dtypes.DeploymentID{
+	// 	Owner: cctx.GetFromAddress().String(),
+	// 	DSeq:  dseq,
+	// })
+	// if err != nil {
+	// 	return markRPCServerError(err)
+	// }
 
-	type result struct {
-		Provider     sdk.Address `json:"provider" yaml:"provider"`
-		Status       string      `json:"status" yaml:"status"`
-		Error        string      `json:"error,omitempty" yaml:"error,omitempty"`
-		ErrorMessage string      `json:"errorMessage,omitempty" yaml:"errorMessage,omitempty"`
-	}
+	// type result struct {
+	// 	Provider     sdk.Address `json:"provider" yaml:"provider"`
+	// 	Status       string      `json:"status" yaml:"status"`
+	// 	Error        string      `json:"error,omitempty" yaml:"error,omitempty"`
+	// 	ErrorMessage string      `json:"errorMessage,omitempty" yaml:"errorMessage,omitempty"`
+	// }
 
-	results := make([]result, len(leases))
+	// results := make([]result, len(leases))
+	// results := make([]result, 1)
 
 	submitFailed := false
 
-	for i, lid := range leases {
-		prov, _ := sdk.AccAddressFromBech32(lid.Provider)
-		gclient, err := gwrest.NewClient(cl, prov, []tls.Certificate{cert})
-		if err != nil {
-			return err
-		}
-
-		err = gclient.SubmitManifest(cmd.Context(), dseq, mani)
-		res := result{
-			Provider: prov,
-			Status:   "PASS",
-		}
-		if err != nil {
-			res.Error = err.Error()
-			if e, valid := err.(gwrest.ClientResponseError); valid {
-				res.ErrorMessage = e.Message
-			}
-			res.Status = "FAIL"
-			submitFailed = true
-		}
-
-		results[i] = res
+	prov, _ := sdk.AccAddressFromBech32("akash1vcgdh56ujtym8umkw3hj028aqu892qydsralwp")
+	gclient, err := gwrest.NewClient(cl, prov, []tls.Certificate{cert})
+	if err != nil {
+		return err
 	}
+	err = gclient.SubmitManifest(cmd.Context(), dseq, mani)
 
-	buf := &bytes.Buffer{}
+	// ILIJA FIX 1
+	// for i, lid := range leases {
+	// 	prov, _ := sdk.AccAddressFromBech32(lid.Provider)
+	// 	gclient, err := gwrest.NewClient(cl, prov, []tls.Certificate{cert})
+	// 	if err != nil {
+	// 		return err
+	// 	}
 
-	switch cmd.Flag(flagOutput).Value.String() {
-	case outputText:
-		for _, res := range results {
-			_, _ = fmt.Fprintf(buf, "provider: %s\n\tstatus:       %s\n", res.Provider, res.Status)
-			if res.Error != "" {
-				_, _ = fmt.Fprintf(buf, "\terror:        %v\n", res.Error)
-			}
-			if res.ErrorMessage != "" {
-				_, _ = fmt.Fprintf(buf, "\terrorMessage: %v\n", res.ErrorMessage)
-			}
-		}
-	case outputJSON:
-		err = json.NewEncoder(buf).Encode(results)
-	case outputYAML:
-		err = yaml.NewEncoder(buf).Encode(results)
-	}
+	// 	err = gclient.SubmitManifest(cmd.Context(), dseq, mani)
+	// 	res := result{
+	// 		Provider: prov,
+	// 		Status:   "PASS",
+	// 	}
+	// 	if err != nil {
+	// 		res.Error = err.Error()
+	// 		if e, valid := err.(gwrest.ClientResponseError); valid {
+	// 			res.ErrorMessage = e.Message
+	// 		}
+	// 		res.Status = "FAIL"
+	// 		submitFailed = true
+	// 	}
+
+	// 	results[i] = res
+	// }
+
+	// buf := &bytes.Buffer{}
+
+	// switch cmd.Flag(flagOutput).Value.String() {
+	// case outputText:
+	// 	for _, res := range results {
+	// 		_, _ = fmt.Fprintf(buf, "provider: %s\n\tstatus:       %s\n", res.Provider, res.Status)
+	// 		if res.Error != "" {
+	// 			_, _ = fmt.Fprintf(buf, "\terror:        %v\n", res.Error)
+	// 		}
+	// 		if res.ErrorMessage != "" {
+	// 			_, _ = fmt.Fprintf(buf, "\terrorMessage: %v\n", res.ErrorMessage)
+	// 		}
+	// 	}
+	// case outputJSON:
+	// 	err = json.NewEncoder(buf).Encode(results)
+	// case outputYAML:
+	// 	err = yaml.NewEncoder(buf).Encode(results)
+	// }
 
 	if err != nil {
 		return err
 	}
 
-	_, err = fmt.Fprint(cmd.OutOrStdout(), buf.String())
+	_, err = fmt.Println("Done WITH MANIFEST")
 
 	if err != nil {
 		return err
