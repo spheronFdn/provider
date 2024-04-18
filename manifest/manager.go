@@ -253,6 +253,7 @@ type manifestManagerFetchDataResult struct {
 func (m *manager) doFetchData(ctx context.Context) (manifestManagerFetchDataResult, error) {
 	subctx, cancel := context.WithTimeout(ctx, m.config.RPCQueryTimeout)
 	defer cancel()
+	//ILIJA FIX
 	deploymentResponse, err := m.session.Client().Query().Deployment(subctx, &dtypes.QueryDeploymentRequest{ID: m.daddr})
 	if err != nil {
 		return manifestManagerFetchDataResult{}, err

@@ -25,6 +25,7 @@ import (
 	kubeVersion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/remotecommand"
 
+	"github.com/cosmos/cosmos-sdk/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/tendermint/tendermint/libs/log"
 
@@ -129,9 +130,12 @@ func newRouter(log log.Logger, addr sdk.Address, pclient provider.Client, ctxCon
 		Methods("GET")
 
 	// PUT
-	bidRouter := router.PathPrefix(bidPathPrefix).Subrouter()
-	bidRouter.HandleFunc("/",
+	bidRouter := router.PathPrefix(spheronPathPrefix).Subrouter()
+	bidRouter.HandleFunc("/bid",
 		createDeploymentCreateHandler(log, pclient.Bus())).
+		Methods(http.MethodPut)
+	bidRouter.HandleFunc("/lease",
+		createLeasetCreateHandler(log, pclient.Bus())).
 		Methods(http.MethodPut)
 
 	hostnameRouter := router.PathPrefix(hostnamePrefix).Subrouter()
@@ -611,6 +615,35 @@ func createDeploymentCreateHandler(log log.Logger, bus pubsub.Bus) http.HandlerF
 			DSeq:  intrand,
 			GSeq:  1,
 			OSeq:  1,
+		}})
+	}
+}
+
+func createLeasetCreateHandler(log log.Logger, bus pubsub.Bus) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		var request struct {
+			Dseq uint64 `json:"dseq"`
+		}
+
+		decoder := json.NewDecoder(req.Body)
+		defer func() {
+			_ = req.Body.Close()
+		}()
+
+		if err := decoder.Decode(&request); err != nil {
+			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+			return
+		}
+
+		bus.Publish(mtypes.EventLeaseCreated{Context: sdkutil.BaseModuleEvent{Module: "market", Action: "lease-created"}, ID: mtypes.LeaseID{
+			Owner:    "akash1pee5q0cssauxmfzth05juwdaz303gczrp74x39",
+			DSeq:     request.Dseq,
+			GSeq:     1,
+			OSeq:     1,
+			Provider: "akash17nhp3eglwgzgp34tc925l3me82jxaa49kyp46l",
+		}, Price: sdk.DecCoin{
+			Denom:  "uakt",
+			Amount: types.OneDec(),
 		}})
 	}
 }

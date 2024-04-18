@@ -76,6 +76,8 @@ var (
 		Name: "provider_order_complete",
 		Help: "",
 	}, []string{"result"})
+
+	helperClient = NewHelperClient("http://localhost:8088")
 )
 
 func newOrder(svc *service, oid mtypes.OrderID, cfg Config, pass ProviderAttrSignatureService, checkForExistingBid bool) (*order, error) {
@@ -172,26 +174,30 @@ func (o *order) run(checkForExistingBid bool) {
 		msg *mtypes.MsgCreateBid
 	)
 
+	//ILIJA FIX
 	// Begin fetching group details immediately.
-	groupch = runner.Do(func() runner.Result {
-		res, err := o.session.Client().Query().Group(ctx, &dtypes.QueryGroupRequest{ID: o.orderID.GroupID()})
-		return runner.NewResult(res.GetGroup(), err)
-	})
-
 	// groupch = runner.Do(func() runner.Result {
-	// 	res, err := getGroup(o.orderID.GroupID().DSeq)
-	// 	return runner.NewResult(res, err)
+	// 	res, err := o.session.Client().Query().Group(ctx, &dtypes.QueryGroupRequest{ID: o.orderID.GroupID()})
+	// 	return runner.NewResult(res.GetGroup(), err)
 	// })
+
+	groupch = runner.Do(func() runner.Result {
+		res, err := helperClient.GetGroup(o.orderID.GroupID().DSeq)
+		return runner.NewResult(res, err)
+	})
 
 	// Load existing bid if needed
 	if checkForExistingBid {
 		queryBidCh = runner.Do(func() runner.Result {
-			return runner.NewResult(o.session.Client().Query().Bid(
-				ctx,
-				&mtypes.QueryBidRequest{
-					ID: mtypes.MakeBidID(o.orderID, o.session.Provider().Address()),
-				},
-			))
+			//ILIJA FIX
+			// return runner.NewResult(o.session.Client().Query().Bid(
+			// 	ctx,
+			// 	&mtypes.QueryBidRequest{
+			// 		ID: mtypes.MakeBidID(o.orderID, o.session.Provider().Address()),
+			// 	},
+			// ))
+			res, err := helperClient.GetBid(o.orderID.GroupID().DSeq)
+			return runner.NewResult(res, err)
 		})
 		// Hide the group details result for later
 		storedGroupCh = groupch
@@ -206,6 +212,9 @@ loop:
 			break loop
 
 		case queryBid := <-queryBidCh:
+
+			o.log.Info("queryBid", "group", queryBid)
+
 			err := queryBid.Error()
 			bidFound := true
 			if err != nil {
@@ -221,6 +230,7 @@ loop:
 			if bidFound {
 				o.session.Log().Info("found existing bid")
 				bidResponse := queryBid.Value().(*mtypes.QueryBidResponse)
+
 				bid := bidResponse.GetBid()
 				bidState := bid.GetState()
 				if bidState != mtypes.BidOpen {
@@ -412,9 +422,18 @@ loop:
 
 			// Begin submitting fulfillment
 			msg = mtypes.NewMsgCreateBid(o.orderID, o.session.Provider().Address(), price, o.cfg.Deposit, offer)
-			bidch = runner.Do(func() runner.Result {
-				return runner.NewResult(o.session.Client().Tx().Broadcast(ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError()))
-			})
+
+			if msg == nil {
+				o.log.Error("error creating bit msg", "err", result.Error())
+				break loop
+			}
+
+			//ILIJA FIX
+			// bidch = runner.Do(func() runner.Result {
+			// 	return runner.NewResult(o.session.Client().Tx().Broadcast(ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError()))
+			// })
+
+			helperClient.SendPostRequest("/bid", *msg)
 
 		case result := <-bidch:
 			bidch = nil
