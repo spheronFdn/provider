@@ -194,7 +194,14 @@ func makeOrderForTest(
 	serviceCast := myService.(*service)
 
 	if checkForExistingBid {
-		bidID := mtypes.MakeBidID(scaffold.orderID, mySession.Provider().Address())
+		// bidID := mtypes.MakeBidID(scaffold.orderID, mySession.Provider().Address())
+		bidID := mtypes.BidID{
+			Owner:    scaffold.orderID.Owner,
+			DSeq:     scaffold.orderID.DSeq,
+			GSeq:     scaffold.orderID.GSeq,
+			OSeq:     scaffold.orderID.OSeq,
+			Provider: "provider",
+		}
 		scaffold.bidID = &bidID
 		queryBidRequest := &mtypes.QueryBidRequest{
 			ID: bidID,

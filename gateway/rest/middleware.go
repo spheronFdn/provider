@@ -58,8 +58,8 @@ func requestProvider(req *http.Request) sdk.Address {
 	return context.Get(req, providerContextKey).(sdk.Address)
 }
 
-func requestOwner(req *http.Request) sdk.Address {
-	return context.Get(req, ownerContextKey).(sdk.Address)
+func requestOwner(req *http.Request) string {
+	return context.Get(req, ownerContextKey).(string)
 }
 
 func requestDeploymentID(req *http.Request) dtypes.DeploymentID {
@@ -78,16 +78,16 @@ func requireOwner() mux.MiddlewareFunc {
 
 			// // at this point client certificate has been validated
 			// // so only thing left to do is get account id stored in the CommonName
-			owner, err := sdk.AccAddressFromBech32("akash1qpwhcppf8qsvjsrs78mnldz0up4l49krsmnzc6")
+			// owner, err := sdk.AccAddressFromBech32("owner")
 
-			fmt.Printf("requireOwner %+v\n", owner)
+			// fmt.Printf("requireOwner %+v\n", owner)
 
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusUnauthorized)
-				return
-			}
+			// if err != nil {
+			// 	http.Error(w, err.Error(), http.StatusUnauthorized)
+			// 	return
+			// }
 
-			context.Set(r, ownerContextKey, owner)
+			context.Set(r, ownerContextKey, "owner")
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -143,9 +143,19 @@ func requireService() mux.MiddlewareFunc {
 
 func parseDeploymentID(req *http.Request) (dtypes.DeploymentID, error) {
 	var parts []string
-	parts = append(parts, requestOwner(req).String())
+	parts = append(parts, requestOwner(req))
 	parts = append(parts, mux.Vars(req)["dseq"])
-	return dtypes.ParseDeploymentPath(parts)
+
+	//ILIJA FIX MASTER ZA WALLETI
+	dseq, err := strconv.ParseUint(parts[1], 10, 64)
+	if err != nil {
+		return dtypes.DeploymentID{}, err
+	}
+
+	return dtypes.DeploymentID{
+		Owner: parts[0],
+		DSeq:  dseq,
+	}, nil
 }
 
 func parseLeaseID(req *http.Request) (mtypes.LeaseID, error) {
@@ -154,7 +164,7 @@ func parseLeaseID(req *http.Request) (mtypes.LeaseID, error) {
 	fmt.Printf("parseLeaseID %+v\n", vars)
 
 	parts := []string{
-		requestOwner(req).String(),
+		requestOwner(req),
 		vars["dseq"],
 		vars["gseq"],
 		vars["oseq"],

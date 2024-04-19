@@ -456,10 +456,14 @@ func (m *manager) validateRequest(req manifestRequest) error {
 
 func (m *manager) checkHostnamesForManifest(requestManifest maniv2beta2.Manifest, groupNames []string) error {
 	// Check if the hostnames are available. Do not block forever
-	ownerAddr, err := m.data.GetDeployment().DeploymentID.GetOwnerAddress()
-	if err != nil {
-		return err
-	}
+	//ILIJA FIX 1
+	// ownerAddr, err := m.data.GetDeployment().DeploymentID.GetOwnerAddress()
+	// if err != nil {
+	// 	return err
+	// }
+	//ILIJA FIX 2
+
+	ownerAddr := m.data.GetDeployment().DeploymentID.Owner
 
 	allHostnames := make([]string, 0)
 

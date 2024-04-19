@@ -257,9 +257,12 @@ loop:
 		case ev := <-s.sub.Events():
 			switch ev := ev.(type) {
 			case event.LeaseWon:
-				if ev.LeaseID.GetProvider() != s.session.Provider().Address().String() {
-					continue
-				}
+				//ILIJA FIX 1
+				// if ev.LeaseID.GetProvider() != s.session.Provider().Address().String() {
+				// 	continue
+				// }
+				//ILIJA FIX 2
+
 				s.session.Log().Info("lease won", "lease", ev.LeaseID)
 				s.handleLease(ev, true)
 			case dtypes.EventDeploymentUpdated:
@@ -277,9 +280,11 @@ loop:
 					manager.stop()
 				}
 			case mtypes.EventLeaseClosed:
-				if ev.ID.GetProvider() != s.session.Provider().Address().String() {
-					continue
-				}
+				//ILIJA FIX 1
+				// if ev.ID.GetProvider() != s.session.Provider().Address().String() {
+				// 	continue
+				// }
+				//ILIJA FIX 2
 
 				key := dquery.DeploymentPath(ev.ID.DeploymentID())
 				if manager := s.managers[key]; manager != nil {

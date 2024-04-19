@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/boz/go-lifecycle"
-	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/pkg/errors"
 
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
@@ -18,7 +17,7 @@ import (
 // hostnameID type exists to identify the target of a reservation. The lease ID type is not used directly because
 // there is no need to consider order ID or provider ID for the purposes oft this
 type hostnameID struct {
-	owner sdktypes.Address
+	owner string
 	dseq  uint64
 	gseq  uint32
 }
@@ -26,14 +25,11 @@ type hostnameID struct {
 func (hID hostnameID) Equals(other hostnameID) bool {
 	return hID.gseq == other.gseq &&
 		hID.dseq == other.dseq &&
-		hID.owner.Equals(other.owner)
+		hID.owner == other.owner
 }
 
 func hostnameIDFromLeaseID(lID mtypes.LeaseID) (hostnameID, error) {
-	ownerAddr, err := lID.DeploymentID().GetOwnerAddress()
-	if err != nil {
-		return hostnameID{}, err
-	}
+	ownerAddr := lID.DeploymentID().Owner
 
 	return hostnameID{
 		owner: ownerAddr,
@@ -93,7 +89,7 @@ func prepareHostnamesImpl(store map[string]hostnameID, hostnames []string, hID h
 	for _, hostname := range hostnames {
 		existingID, ok := store[hostname]
 		if ok {
-			if existingID.owner.Equals(hID.owner) {
+			if existingID.owner == hID.owner {
 				toChange = append(toChange, hostname)
 			} else {
 				errCh <- fmt.Errorf("%w: host %q in use", ErrHostnameNotAllowed, hostname)
@@ -143,7 +139,7 @@ func reserveHostnamesImpl(store map[string]hostnameID, hostnames []string, hID h
 		existingID, inUse := store[hostname]
 		if inUse {
 			// Check to see if the same address already is using this hostname
-			if !existingID.owner.Equals(hID.owner) {
+			if existingID.owner != hID.owner {
 				// The owner is not the same, this can't be done
 				ch <- fmt.Errorf("%w: host %q in use", ErrHostnameNotAllowed, hostname)
 				return
@@ -191,7 +187,7 @@ func reserveHostnamesImpl(store map[string]hostnameID, hostnames []string, hID h
 	resultCh <- withheldHostnames
 }
 
-func (sh *SimpleHostnames) CanReserveHostnames(hostnames []string, ownerAddr sdktypes.Address) error {
+func (sh *SimpleHostnames) CanReserveHostnames(hostnames []string, ownerAddr string) error {
 	sh.lock.Lock()
 	defer sh.lock.Unlock()
 	ch := make(chan error, 1)
@@ -199,12 +195,12 @@ func (sh *SimpleHostnames) CanReserveHostnames(hostnames []string, ownerAddr sdk
 	return <-ch
 }
 
-func canReserveHostnamesImpl(store map[string]hostnameID, hostnames []string, ownerAddr sdktypes.Address, chErr chan<- error) {
+func canReserveHostnamesImpl(store map[string]hostnameID, hostnames []string, ownerAddr string, chErr chan<- error) {
 	for _, hostname := range hostnames {
 		existingID, inUse := store[hostname]
 
 		if inUse {
-			if !existingID.owner.Equals(ownerAddr) {
+			if existingID.owner != ownerAddr {
 				chErr <- fmt.Errorf("%w: host %q in use", ErrHostnameNotAllowed, hostname)
 				return
 			}
@@ -250,7 +246,7 @@ type reserveRequest struct {
 type canReserveRequest struct {
 	hostnames []string
 	result    chan<- error
-	ownerAddr sdktypes.Address
+	ownerAddr string
 }
 
 type prepareTransferRequest struct {
@@ -448,7 +444,7 @@ func (hs *hostnameService) ReleaseHostnames(leaseID mtypes.LeaseID) error {
 	return nil
 }
 
-func (hs *hostnameService) CanReserveHostnames(hostnames []string, ownerAddr sdktypes.Address) error {
+func (hs *hostnameService) CanReserveHostnames(hostnames []string, ownerAddr string) error {
 	returnValue := make(chan error, 1) // Buffer of one so service does not block
 	lowercaseHostnames := make([]string, len(hostnames))
 	for i, hostname := range hostnames {

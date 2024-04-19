@@ -28,6 +28,8 @@ import (
 
 	mparams "github.com/akash-network/akash-api/go/node/market/v1beta4"
 	ptypes "github.com/akash-network/akash-api/go/node/provider/v1beta3"
+	types_v1beta3 "github.com/akash-network/akash-api/go/node/types/v1beta3"
+
 	"github.com/akash-network/node/cmd/common"
 	"github.com/akash-network/node/events"
 	"github.com/akash-network/node/pubsub"
@@ -571,6 +573,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	//ILIJA FIX 1
 	// Check that the certificate exists on chain and is not revoked
 	// cresp, err := cl.Query().Certificates(cmd.Context(), &ctypes.QueryCertificatesRequest{
 	// 	Filter: ctypes.CertificateFilter{
@@ -587,17 +590,21 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 	// 	return errors.Errorf("no valid found on chain certificate for account %s", cctx.FromAddress)
 	// }
 
-	res, err := cl.Query().Provider(
-		cmd.Context(),
-		&ptypes.QueryProviderRequest{Owner: cctx.FromAddress.String()},
-	)
-	if err != nil {
-		return err
+	// res, err := cl.Query().Provider(
+	// 	cmd.Context(),
+	// 	&ptypes.QueryProviderRequest{Owner: cctx.FromAddress.String()},
+	// )
+	// if err != nil {
+	// 	return err
+	// }
+	//ILIJA FIX 2
+
+	pinfo := ptypes.Provider{
+		Owner:      "provider",
+		HostURI:    "https://localhost:8443",
+		Attributes: types_v1beta3.Attributes{types_v1beta3.Attribute{Key: "region", Value: "us-west"}, types_v1beta3.Attribute{Key: "capabilities/storage/1/persistent", Value: "true"}},
 	}
-
-	pinfo := &res.Provider
-
-	fmt.Printf("Provider info %+v\n", pinfo)
+	fmt.Printf("pinfo %+v\n", pinfo)
 
 	// k8s client creation
 	kubeSettings := builder.NewDefaultSettings()
@@ -631,7 +638,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	currentBlockHeight := statusResult.SyncInfo.LatestBlockHeight
-	session := session.New(logger, cl, pinfo, currentBlockHeight)
+	session := session.New(logger, cl, &pinfo, currentBlockHeight)
 
 	if err := cctx.Client.Start(); err != nil {
 		return err

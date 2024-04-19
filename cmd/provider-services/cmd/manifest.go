@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"crypto/tls"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -11,7 +10,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/akash-network/node/sdl"
-	cutils "github.com/akash-network/node/x/cert/utils"
 
 	aclient "github.com/akash-network/provider/client"
 	gwrest "github.com/akash-network/provider/gateway/rest"
@@ -64,10 +62,10 @@ func doSendManifest(cmd *cobra.Command, sdlpath string) error {
 		return err
 	}
 
-	cert, err := cutils.LoadAndQueryCertificateForAccount(cmd.Context(), cctx, nil)
-	if err != nil {
-		return markRPCServerError(err)
-	}
+	// cert, err := cutils.LoadAndQueryCertificateForAccount(cmd.Context(), cctx, nil)
+	// if err != nil {
+	// 	return markRPCServerError(err)
+	// }
 
 	dseq, err := dseqFromFlags(cmd.Flags())
 	if err != nil {
@@ -96,7 +94,7 @@ func doSendManifest(cmd *cobra.Command, sdlpath string) error {
 	submitFailed := false
 
 	prov, _ := sdk.AccAddressFromBech32("akash1vcgdh56ujtym8umkw3hj028aqu892qydsralwp")
-	gclient, err := gwrest.NewClient(cl, prov, []tls.Certificate{cert})
+	gclient, err := gwrest.NewClientILIJA(cl, prov)
 	if err != nil {
 		return err
 	}

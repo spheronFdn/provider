@@ -70,7 +70,14 @@ func (wd *watchdog) run() {
 
 		runch = runner.Do(func() runner.Result {
 			msg := &types.MsgCloseBid{
-				BidID: types.MakeBidID(wd.leaseID.OrderID(), wd.sess.Provider().Address()),
+				BidID: types.BidID{
+					Owner:    wd.leaseID.OrderID().Owner,
+					DSeq:     wd.leaseID.OrderID().DSeq,
+					GSeq:     wd.leaseID.OrderID().GSeq,
+					OSeq:     wd.leaseID.OrderID().OSeq,
+					Provider: "provider",
+				},
+				// BidID: types.MakeBidID(wd.leaseID.OrderID(), wd.sess.Provider().Address()),
 			}
 
 			return runner.NewResult(wd.sess.Client().Tx().Broadcast(wd.ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError()))

@@ -38,7 +38,7 @@ func TestBlockedHostname(t *testing.T) {
 	s := makeHostnameScaffold(t, []string{"foobar.com", "bobsdefi.com"})
 
 	ownerAddr := testutil.AccAddress(t)
-	err := s.service.CanReserveHostnames([]string{"foobar.com", "other.org"}, ownerAddr)
+	err := s.service.CanReserveHostnames([]string{"foobar.com", "other.org"}, ownerAddr.String())
 	require.Error(t, err)
 	require.True(t, errors.Is(err, ErrHostnameNotAllowed))
 	require.Regexp(t, "^.*blocked by this provider.*$", err.Error())
@@ -56,7 +56,7 @@ func TestBlockedDomain(t *testing.T) {
 	s := makeHostnameScaffold(t, []string{"foobar.com", ".bobsdefi.com"})
 
 	ownerAddr := testutil.AccAddress(t)
-	err := s.service.CanReserveHostnames([]string{"accounts.bobsdefi.com"}, ownerAddr)
+	err := s.service.CanReserveHostnames([]string{"accounts.bobsdefi.com"}, ownerAddr.String())
 
 	require.Error(t, err)
 	require.True(t, errors.Is(err, ErrHostnameNotAllowed))

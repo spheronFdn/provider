@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/boz/go-lifecycle"
-	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	tpubsub "github.com/troian/pubsub"
 
 	"github.com/pkg/errors"
@@ -69,7 +68,7 @@ type service struct {
 }
 
 type checkDeploymentExistsRequest struct {
-	owner sdktypes.Address
+	owner string
 	dseq  uint64
 	gseq  uint32
 
@@ -88,7 +87,7 @@ type Cluster interface {
 type StatusClient interface {
 	Status(context.Context) (*ctypes.Status, error)
 	StatusV1(context.Context) (*provider.ClusterStatus, error)
-	FindActiveLease(ctx context.Context, owner sdktypes.Address, dseq uint64, gseq uint32) (bool, mtypes.LeaseID, crd.ManifestGroup, error)
+	FindActiveLease(ctx context.Context, owner string, dseq uint64, gseq uint32) (bool, mtypes.LeaseID, crd.ManifestGroup, error)
 }
 
 // Service manage compute cluster for the provider.  Will eventually integrate with kubernetes, etc...
@@ -169,7 +168,7 @@ func NewService(ctx context.Context, session session.Session, bus pubsub.Bus, cl
 	return s, nil
 }
 
-func (s *service) FindActiveLease(ctx context.Context, owner sdktypes.Address, dseq uint64, gseq uint32) (bool, mtypes.LeaseID, crd.ManifestGroup, error) {
+func (s *service) FindActiveLease(ctx context.Context, owner string, dseq uint64, gseq uint32) (bool, mtypes.LeaseID, crd.ManifestGroup, error) {
 	response := make(chan mtypes.LeaseID, 1)
 	req := checkDeploymentExistsRequest{
 		responseCh: response,
@@ -431,7 +430,7 @@ loop:
 func (s *service) doCheckDeploymentExists(req checkDeploymentExistsRequest) {
 	for leaseID := range s.managers {
 		// Check for a match
-		if leaseID.GSeq == req.gseq && leaseID.DSeq == req.dseq && leaseID.Owner == req.owner.String() {
+		if leaseID.GSeq == req.gseq && leaseID.DSeq == req.dseq && leaseID.Owner == req.owner {
 			req.responseCh <- leaseID
 			return
 		}

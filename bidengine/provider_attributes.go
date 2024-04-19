@@ -409,28 +409,31 @@ func (pass *providerAttrSignatureService) tryFetchAttributes(ctx context.Context
 	select {
 	case pass.fetchInProgress <- struct{}{}:
 		go func() {
-			var err error
-			defer func() {
-				<-pass.fetchInProgress
-				if err != nil {
-					pass.errFetchAttr <- err
-				}
-			}()
+			//ILIJA FIX MORA SE ISPARAVI
+			// var err error
+			// defer func() {
+			// 	<-pass.fetchInProgress
+			// 	if err != nil {
+			// 		pass.errFetchAttr <- err
+			// 	}
+			// }()
 
-			var result *ptypes.QueryProviderResponse
+			// var result *ptypes.QueryProviderResponse
 
-			req := &ptypes.QueryProviderRequest{
-				Owner: pass.providerAddr,
-			}
+			// req := &ptypes.QueryProviderRequest{
+			// 	Owner: pass.providerAddr,
+			// }
 
-			result, err = pass.session.Client().Query().Provider(ctx, req)
-			if err != nil {
-				pass.session.Log().Error("fetching provider attributes", "provider", req.Owner)
-				return
-			}
-			pass.session.Log().Info("fetched provider attributes", "provider", req.Owner)
+			// result, err = pass.session.Client().Query().Provider(ctx, req)
+			// if err != nil {
+			// 	pass.session.Log().Error("fetching provider attributes", "provider", req.Owner)
+			// 	return
+			// }
+			// pass.session.Log().Info("fetched provider attributes", "provider", req.Owner)
 
-			pass.newAttr <- result.Provider.Attributes
+			// pass.newAttr <- result.Provider.Attributes
+
+			pass.newAttr <- pass.attr
 		}()
 	default:
 		return

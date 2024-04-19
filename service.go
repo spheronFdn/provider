@@ -10,7 +10,6 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/client"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	provider "github.com/akash-network/akash-api/go/provider/v1"
@@ -18,7 +17,6 @@ import (
 	"github.com/akash-network/node/pubsub"
 
 	"github.com/akash-network/provider/bidengine"
-	aclient "github.com/akash-network/provider/client"
 	"github.com/akash-network/provider/cluster"
 	ctypes "github.com/akash-network/provider/cluster/types/v1beta3"
 	"github.com/akash-network/provider/manifest"
@@ -30,7 +28,7 @@ import (
 
 // ValidateClient is the interface to check if provider will bid on given groupspec
 type ValidateClient interface {
-	Validate(context.Context, sdk.Address, dtypes.GroupSpec) (ValidateGroupSpecResult, error)
+	Validate(context.Context, string, dtypes.GroupSpec) (ValidateGroupSpecResult, error)
 }
 
 // StatusClient is the interface which includes status of service
@@ -87,23 +85,23 @@ func NewService(ctx context.Context,
 	clusterConfig.DeploymentIngressDomain = cfg.DeploymentIngressDomain
 	clusterConfig.ClusterSettings = cfg.ClusterSettings
 
-	cl, err := aclient.DiscoverQueryClient(ctx, cctx)
-	if err != nil {
-		cancel()
-		return nil, err
-	}
+	// cl, err := aclient.DiscoverQueryClient(ctx, cctx)
+	// if err != nil {
+	// 	cancel()
+	// 	return nil, err
+	// }
 
-	bc, err := newBalanceChecker(ctx, bankTypes.NewQueryClient(cctx), cl, accAddr, session, bus, cfg.BalanceCheckerCfg)
-	if err != nil {
-		session.Log().Error("starting balance checker", "err", err)
-		cancel()
-		return nil, err
-	}
+	// bc, err := newBalanceChecker(ctx, bankTypes.NewQueryClient(cctx), cl, accAddr, session, bus, cfg.BalanceCheckerCfg)
+	// if err != nil {
+	// 	session.Log().Error("starting balance checker", "err", err)
+	// 	cancel()
+	// 	return nil, err
+	// }
 
 	cluster, err := cluster.NewService(ctx, session, bus, cclient, waiter, clusterConfig)
 	if err != nil {
 		cancel()
-		<-bc.lc.Done()
+		// <-bc.lc.Done()
 		return nil, err
 	}
 
@@ -119,7 +117,7 @@ func NewService(ctx context.Context,
 		session.Log().Error(errmsg, "err", err)
 		cancel()
 		<-cluster.Done()
-		<-bc.lc.Done()
+		// <-bc.lc.Done()
 		return nil, errors.Wrap(err, errmsg)
 	}
 
@@ -136,7 +134,7 @@ func NewService(ctx context.Context,
 		cancel()
 		<-cluster.Done()
 		<-bidengine.Done()
-		<-bc.lc.Done()
+		// <-bc.lc.Done()
 		return nil, err
 	}
 
@@ -149,9 +147,9 @@ func NewService(ctx context.Context,
 		manifest:  manifest,
 		ctx:       ctx,
 		cancel:    cancel,
-		bc:        bc,
-		lc:        lifecycle.New(),
-		config:    cfg,
+		// bc:        bc,
+		lc:     lifecycle.New(),
+		config: cfg,
 	}
 
 	go svc.lc.WatchContext(ctx)
@@ -170,7 +168,7 @@ type service struct {
 	cluster   cluster.Service
 	bidengine bidengine.Service
 	manifest  manifest.Service
-	bc        *balanceChecker
+	// bc        *balanceChecker
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -251,10 +249,10 @@ func (s *service) StatusV1(ctx context.Context) (*provider.Status, error) {
 	}, nil
 }
 
-func (s *service) Validate(ctx context.Context, owner sdk.Address, gspec dtypes.GroupSpec) (ValidateGroupSpecResult, error) {
+func (s *service) Validate(ctx context.Context, owner string, gspec dtypes.GroupSpec) (ValidateGroupSpecResult, error) {
 	// FUTURE - pass owner here
 	req := bidengine.Request{
-		Owner: owner.String(),
+		Owner: owner,
 		GSpec: &gspec,
 	}
 
@@ -301,7 +299,7 @@ func (s *service) run() {
 	<-s.cluster.Done()
 	<-s.bidengine.Done()
 	<-s.manifest.Done()
-	<-s.bc.lc.Done()
+	// <-s.bc.lc.Done()
 
 	s.session.Log().Info("shutdown complete")
 }

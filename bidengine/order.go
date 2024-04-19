@@ -172,7 +172,7 @@ func (o *order) run(checkForExistingBid bool) {
 		reservation ctypes.Reservation
 
 		won bool
-		msg *mtypes.MsgCreateBid
+		// msg *mtypes.MsgCreateBid
 	)
 
 	//ILIJA FIX 1
@@ -266,12 +266,21 @@ loop:
 				}
 
 				// check winning provider
-				if ev.ID.Provider != o.session.Provider().Address().String() {
+				if ev.ID.Provider != "provider" {
 					orderCompleteCounter.WithLabelValues("lease-lost").Inc()
 					o.log.Info("lease lost", "lease", ev.ID)
 					bidPlaced = false // Lease lost, network closes bid
 					break loop
 				}
+
+				//ILIJA FIX 1
+				// if ev.ID.Provider != o.session.Provider().Address().String() {
+				// 	orderCompleteCounter.WithLabelValues("lease-lost").Inc()
+				// 	o.log.Info("lease lost", "lease", ev.ID)
+				// 	bidPlaced = false // Lease lost, network closes bid
+				// 	break loop
+				// }
+				//ILIJA FIX 2
 				orderCompleteCounter.WithLabelValues("lease-won").Inc()
 
 				// TODO: sanity check (price, state, etc...)
@@ -424,21 +433,37 @@ loop:
 
 			offer := mtypes.ResourceOfferFromRU(reservation.GetAllocatedResources())
 
-			// Begin submitting fulfillment
-			msg = mtypes.NewMsgCreateBid(o.orderID, o.session.Provider().Address(), price, o.cfg.Deposit, offer)
-
-			if msg == nil {
-				o.log.Error("error creating bit msg", "err", result.Error())
-				break loop
-			}
-
 			//ILIJA FIX 1
+
+			// Begin submitting fulfillment
+			// msg = mtypes.NewMsgCreateBid(o.orderID, o.session.Provider().Address(), price, o.cfg.Deposit, offer)
+
+			// if msg == nil {
+			// 	o.log.Error("error creating bit msg", "err", result.Error())
+			// 	break loop
+			// }
+
+			// if msg == nil {
+			// 	o.log.Error("error creating bit msg", "err", result.Error())
+			// 	break loop
+			// }
+
 			// bidch = runner.Do(func() runner.Result {
 			// 	return runner.NewResult(o.session.Client().Tx().Broadcast(ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError()))
 			// })
 			//ILIJA FIX 2
 
-			spheronClient.SendPostRequest(ctx, "/bid", *msg)
+			msg := mtypes.MsgCreateBid{
+				Order:          o.orderID,
+				Provider:       "provider",
+				Price:          price,
+				Deposit:        o.cfg.Deposit,
+				ResourcesOffer: offer,
+			}
+
+			bidch = runner.Do(func() runner.Result {
+				return runner.NewResult(spheronClient.SendPostRequest(ctx, "/bid", msg))
+			})
 
 		case result := <-bidch:
 			fmt.Printf("STANIS BID CHANNEL RESULT %+v\n", result)
@@ -491,7 +516,14 @@ loop:
 			o.log.Debug("closing bid", "order-id", o.orderID)
 
 			msg := &mtypes.MsgCloseBid{
-				BidID: mtypes.MakeBidID(o.orderID, o.session.Provider().Address()),
+				// BidID: mtypes.MakeBidID(o.orderID, o.session.Provider().Address()),
+				BidID: mtypes.BidID{
+					Owner:    o.orderID.Owner,
+					DSeq:     o.orderID.DSeq,
+					GSeq:     o.orderID.GSeq,
+					OSeq:     o.orderID.OSeq,
+					Provider: "provider",
+				},
 			}
 
 			_, err := o.session.Client().Tx().Broadcast(ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError())

@@ -29,7 +29,6 @@ import (
 	ctypes "github.com/akash-network/akash-api/go/node/cert/v1beta3"
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
-	ptypes "github.com/akash-network/akash-api/go/node/provider/v1beta3"
 
 	cutils "github.com/akash-network/node/x/cert/utils"
 
@@ -87,20 +86,38 @@ type ServiceLogs struct {
 
 // NewClient returns a new Client
 func NewClient(qclient aclient.QueryClient, addr sdk.Address, certs []tls.Certificate) (Client, error) {
-	res, err := qclient.Provider(context.Background(), &ptypes.QueryProviderRequest{Owner: addr.String()})
+	//ILIJA FIX 1
+	// res, err := qclient.Provider(context.Background(), &ptypes.QueryProviderRequest{Owner: addr.String()})
+	// if err != nil {
+	// 	return nil, err
+	// }
+	//ILIJA FIX 2
+
+	uri, err := url.Parse("https://localhost:8443")
 	if err != nil {
 		return nil, err
 	}
 
-	uri, err := url.Parse(res.Provider.HostURI)
-	if err != nil {
-		return nil, err
-	}
-
-	return newClient(qclient, addr, certs, uri), nil
+	return newClient(qclient, addr, uri), nil
 }
 
-func newClient(qclient aclient.QueryClient, addr sdk.Address, certs []tls.Certificate, uri *url.URL) *client {
+func NewClientILIJA(qclient aclient.QueryClient, addr sdk.Address) (Client, error) {
+	//ILIJA FIX 1
+	// res, err := qclient.Provider(context.Background(), &ptypes.QueryProviderRequest{Owner: addr.String()})
+	// if err != nil {
+	// 	return nil, err
+	// }
+	//ILIJA FIX 2
+
+	uri, err := url.Parse("https://localhost:8443")
+	if err != nil {
+		return nil, err
+	}
+
+	return newClient(qclient, addr, uri), nil
+}
+
+func newClient(qclient aclient.QueryClient, addr sdk.Address, uri *url.URL) *client {
 	cl := &client{
 		host:    uri,
 		addr:    addr,
@@ -109,8 +126,8 @@ func newClient(qclient aclient.QueryClient, addr sdk.Address, certs []tls.Certif
 
 	tlsConfig := &tls.Config{
 		// must use Hostname rather than Host field as certificate is issued for host without port
-		ServerName:            uri.Hostname(),
-		Certificates:          certs,
+		ServerName: uri.Hostname(),
+		// Certificates:          certs,
 		InsecureSkipVerify:    true, // nolint: gosec
 		VerifyPeerCertificate: cl.verifyPeerCertificate,
 		MinVersion:            tls.VersionTLS13,
@@ -309,9 +326,11 @@ func (c *client) verifyPeerCertificate(certificates [][]byte, _ [][]*x509.Certif
 		return errors.Wrap(err, "tls: invalid certificate's issuer common name")
 	}
 
-	if !c.addr.Equals(prov) {
-		return errors.Errorf("tls: hijacked certificate")
-	}
+	//ILIJA FIX 1
+	// if !c.addr.Equals(prov) {
+	// 	return errors.Errorf("tls: hijacked certificate")
+	// }
+	//ILIJA FIX 2
 
 	// 2. serial number must be in
 	if cert.SerialNumber == nil {
