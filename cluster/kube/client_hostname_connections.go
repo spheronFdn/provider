@@ -132,6 +132,7 @@ func (ev hostnameResourceEvent) GetExternalPort() uint32 {
 func (c *client) ObserveHostnameState(ctx context.Context) (<-chan ctypes.HostnameResourceEvent, error) {
 	var lastResourceVersion string
 	phpager := pager.New(func(ctx context.Context, opts metav1.ListOptions) (runtime.Object, error) {
+		opts.Limit = 5000
 		resources, err := c.ac.AkashV2beta2().ProviderHosts(c.ns).List(ctx, opts)
 
 		if err == nil && len(resources.GetResourceVersion()) != 0 {
@@ -262,6 +263,7 @@ func (c *client) ObserveHostnameState(ctx context.Context) (<-chan ctypes.Hostna
 
 func (c *client) AllHostnames(ctx context.Context) ([]ctypes.ActiveHostname, error) {
 	ingressPager := pager.New(func(ctx context.Context, opts metav1.ListOptions) (runtime.Object, error) {
+		opts.Limit = 5000
 		return c.ac.AkashV2beta2().ProviderHosts(c.ns).List(ctx, opts)
 	})
 

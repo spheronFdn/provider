@@ -460,6 +460,7 @@ func (c *client) fetchActiveNodes(ctx context.Context, cstorage clusterStorage) 
 	}
 	podsClient := c.kc.CoreV1().Pods(metav1.NamespaceAll)
 	podsPager := pager.New(func(ctx context.Context, opts metav1.ListOptions) (runtime.Object, error) {
+		opts.Limit = 5000
 		return podsClient.List(ctx, opts)
 	})
 

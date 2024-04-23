@@ -186,6 +186,7 @@ func (lh leaseIDHostnameConnection) GetServiceName() string {
 
 func (c *client) GetHostnameDeploymentConnections(ctx context.Context) ([]ctypes.LeaseIDHostnameConnection, error) {
 	ingressPager := pager.New(func(ctx context.Context, opts metav1.ListOptions) (runtime.Object, error) {
+		opts.Limit = 5000
 		return c.kc.NetworkingV1().Ingresses(metav1.NamespaceAll).List(ctx, opts)
 	})
 
