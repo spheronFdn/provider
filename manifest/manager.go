@@ -184,6 +184,8 @@ loop:
 			}
 		case version := <-m.updatech:
 			m.log.Info("received version", "version", hex.EncodeToString(version))
+			//version not used atm
+			//it should be used for comaring manifest version and version from transaction
 			m.versions = append(m.versions, version)
 			m.clearFetched()
 
@@ -418,6 +420,7 @@ func (m *manager) validateRequest(req manifestRequest) error {
 
 	// ensure that an uploaded manifest matches the hash declared on
 	// the Akash Deployment.Version
+	//ILIJA FIX 1
 	// version, err := req.value.Manifest.Version()
 	// if err != nil {
 	// 	return err
@@ -435,6 +438,7 @@ func (m *manager) validateRequest(req manifestRequest) error {
 	// 	m.log.Info("deployment version mismatch", "expected", m.data.Deployment.Version, "got", version)
 	// 	return ErrManifestVersion
 	// }
+	//ILIJA FIX 2
 
 	// if err = req.value.Manifest.CheckAgainstDeployment(m.data.Groups); err != nil {
 	// 	return err
@@ -456,6 +460,7 @@ func (m *manager) validateRequest(req manifestRequest) error {
 
 func (m *manager) checkHostnamesForManifest(requestManifest maniv2beta2.Manifest, groupNames []string) error {
 	// Check if the hostnames are available. Do not block forever
+
 	//ILIJA FIX 1
 	// ownerAddr, err := m.data.GetDeployment().DeploymentID.GetOwnerAddress()
 	// if err != nil {
@@ -463,7 +468,7 @@ func (m *manager) checkHostnamesForManifest(requestManifest maniv2beta2.Manifest
 	// }
 	//ILIJA FIX 2
 
-	ownerAddr := m.data.GetDeployment().DeploymentID.Owner
+	ownerAddr := "owner"
 
 	allHostnames := make([]string, 0)
 

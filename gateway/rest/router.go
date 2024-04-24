@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/ecdsa"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -85,9 +86,18 @@ func newRouter(log log.Logger, addr sdk.Address, pclient provider.Client, ctxCon
 	router := mux.NewRouter()
 
 	// store provider address in context as lease endpoints below need it
+	//ILIJA FIX 1
+	// router.Use(func(next http.Handler) http.Handler {
+	// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// 		gcontext.Set(r, providerContextKey, addr)
+
+	// 		next.ServeHTTP(w, r)
+	// 	})
+	// })
+	//ILIJA FIX 2
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			gcontext.Set(r, providerContextKey, addr)
+			gcontext.Set(r, providerContextKey, "provider")
 
 			next.ServeHTTP(w, r)
 		})
@@ -129,16 +139,19 @@ func newRouter(log log.Logger, addr sdk.Address, pclient provider.Client, ctxCon
 		Methods("GET")
 
 	// PUT
-	bidRouter := router.PathPrefix(spheronPathPrefix).Subrouter()
-	bidRouter.HandleFunc("/bid",
+	shperonRouter := router.PathPrefix(spheronPathPrefix).Subrouter()
+	shperonRouter.HandleFunc("/bid",
 		createDeploymentCreateHandler(log, pclient.Bus())).
 		Methods(http.MethodPut)
-	bidRouter.HandleFunc("/lease",
+	shperonRouter.HandleFunc("/lease",
 		createLeasetCreateHandler(log, pclient.Bus())).
 		Methods(http.MethodPut)
-	bidRouter.HandleFunc("/deployment",
+	shperonRouter.HandleFunc("/deployment/close",
 		createDeploymentCloseHandler(log, pclient.Bus())).
 		Methods(http.MethodDelete)
+	shperonRouter.HandleFunc("/deployment/update",
+		createDeploymentUpdateHandler(log, pclient.Bus())).
+		Methods(http.MethodPut)
 
 	hostnameRouter := router.PathPrefix(hostnamePrefix).Subrouter()
 	hostnameRouter.Use(requireOwner())
@@ -616,6 +629,23 @@ func createDeploymentCreateHandler(log log.Logger, bus pubsub.Bus) http.HandlerF
 			GSeq:  1,
 			OSeq:  1,
 		}})
+	}
+}
+
+func createDeploymentUpdateHandler(log log.Logger, bus pubsub.Bus) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+
+		defer func() {
+			_ = req.Body.Close()
+		}()
+
+		v, _ := hex.DecodeString("1")
+
+		bus.Publish(dtypes.EventDeploymentUpdated{Context: sdkutil.BaseModuleEvent{Module: "market", Action: "deployment-updated"}, ID: dtypes.DeploymentID{
+			Owner: "owner",
+			DSeq:  15,
+		}, Version: v,
+		})
 	}
 }
 

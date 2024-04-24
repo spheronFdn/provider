@@ -18,7 +18,6 @@ import (
 
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
-	mquery "github.com/akash-network/node/x/market/query"
 )
 
 type contextKey int
@@ -54,8 +53,8 @@ func requestServices(req *http.Request) string {
 	return context.Get(req, servicesContextKey).(string)
 }
 
-func requestProvider(req *http.Request) sdk.Address {
-	return context.Get(req, providerContextKey).(sdk.Address)
+func requestProvider(req *http.Request) string {
+	return context.Get(req, providerContextKey).(string)
 }
 
 func requestOwner(req *http.Request) string {
@@ -168,12 +167,34 @@ func parseLeaseID(req *http.Request) (mtypes.LeaseID, error) {
 		vars["dseq"],
 		vars["gseq"],
 		vars["oseq"],
-		requestProvider(req).String(),
+		requestProvider(req),
 	}
 
 	fmt.Printf("parseLeaseID parts %+v\n", parts)
 
-	return mquery.ParseLeasePath(parts)
+	dseq, err := strconv.ParseUint(parts[1], 10, 64)
+	if err != nil {
+		return mtypes.LeaseID{}, err
+	}
+	gseq, err := strconv.ParseUint(parts[2], 10, 32)
+	if err != nil {
+		return mtypes.LeaseID{}, err
+	}
+	oseq, err := strconv.ParseUint(parts[3], 10, 32)
+	if err != nil {
+		return mtypes.LeaseID{}, err
+	}
+
+	//ILIJA FIX
+	// return mquery.ParseLeasePath(parts)
+	//ILIJA FIX
+	return mtypes.LeaseID{
+		Owner:    parts[0],
+		DSeq:     dseq,
+		GSeq:     uint32(gseq),
+		OSeq:     uint32(oseq),
+		Provider: parts[4],
+	}, nil
 }
 
 func requestStreamParams() mux.MiddlewareFunc {
@@ -265,7 +286,10 @@ func resourceServerAuth(log log.Logger, providerAddr sdk.Address, publicKey *ecd
 				return
 			}
 			gcontext.Set(r, ownerContextKey, ownerAddress)
-			gcontext.Set(r, providerContextKey, providerAddr)
+			//ILIJA FIX 1
+			// gcontext.Set(r, providerContextKey, providerAddr)
+			//ILIJA FIX 2
+			gcontext.Set(r, providerContextKey, "provider")
 
 			next.ServeHTTP(w, r)
 		})

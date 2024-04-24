@@ -2,6 +2,7 @@ package v2beta2
 
 import (
 	"fmt"
+	"strconv"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -157,9 +158,24 @@ func NewManifest(ns string, lid mtypes.LeaseID, mgroup *mani.Group, settings Clu
 
 // Deployment returns the cluster.Deployment that the saved manifest represents.
 func (m *Manifest) Deployment() (ctypes.IDeployment, error) {
-	lid, err := m.Spec.LeaseID.FromCRD()
+	//ILIJA FIX 1
+	// lid, err := m.Spec.LeaseID.FromCRD()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	//ILIJA FIX 2
+
+	dseq, err := strconv.ParseUint(m.Spec.LeaseID.DSeq, 10, 64)
 	if err != nil {
 		return nil, err
+	}
+
+	lid := mtypes.LeaseID{
+		Owner:    m.Spec.LeaseID.Owner,
+		DSeq:     dseq,
+		GSeq:     m.Spec.LeaseID.GSeq,
+		OSeq:     m.Spec.LeaseID.OSeq,
+		Provider: m.Spec.LeaseID.Provider,
 	}
 
 	group, schedulerParams, err := m.Spec.Group.fromCRD()
