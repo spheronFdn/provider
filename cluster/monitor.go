@@ -11,12 +11,10 @@ import (
 	"github.com/boz/go-lifecycle"
 	"github.com/tendermint/tendermint/libs/log"
 
-	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
 	"github.com/akash-network/node/pubsub"
 	"github.com/akash-network/node/util/runner"
 
 	ctypes "github.com/akash-network/provider/cluster/types/v1beta3"
-	"github.com/akash-network/provider/cluster/util"
 	"github.com/akash-network/provider/event"
 	"github.com/akash-network/provider/session"
 )
@@ -132,7 +130,7 @@ loop:
 
 			m.log.Error("deployment failed.  closing lease.")
 			deploymentHealthCheckCounter.WithLabelValues("failed").Inc()
-			closech = m.runCloseLease(ctx)
+			// closech = m.runCloseLease(ctx) ()
 
 		case <-closech:
 			closech = nil
@@ -164,53 +162,53 @@ func (m *deploymentMonitor) runCheck(ctx context.Context) <-chan runner.Result {
 }
 
 func (m *deploymentMonitor) doCheck(ctx context.Context) (bool, error) {
-	clientCtx := util.ApplyToContext(ctx, m.clusterSettings)
+	// Comment out monitoring logic because we are going to do that on Spheron level
 
-	status, err := m.client.LeaseStatus(clientCtx, m.deployment.LeaseID())
-
-	if err != nil {
-		m.log.Error("lease status", "err", err)
-		return false, err
-	}
+	// clientCtx := util.ApplyToContext(ctx, m.clusterSettings)
+	// status, err := m.client.LeaseStatus(clientCtx, m.deployment.LeaseID())
+	// if err != nil {
+	// 	m.log.Error("lease status", "err", err)
+	// 	return false, err
+	// }
 
 	badsvc := 0
 
-	for _, spec := range m.deployment.ManifestGroup().Services {
-		service, foundService := status[spec.Name]
-		if foundService {
-			if uint32(service.Available) < spec.Count {
-				badsvc++
-				m.log.Debug("service available replicas below target",
-					"service", spec.Name,
-					"available", service.Available,
-					"target", spec.Count,
-				)
-			}
-		}
+	// for _, spec := range m.deployment.ManifestGroup().Services {
+	// 	service, foundService := status[spec.Name]
+	// 	if foundService {
+	// 		if uint32(service.Available) < spec.Count {
+	// 			badsvc++
+	// 			m.log.Debug("service available replicas below target",
+	// 				"service", spec.Name,
+	// 				"available", service.Available,
+	// 				"target", spec.Count,
+	// 			)
+	// 		}
+	// 	}
 
-		if !foundService {
-			badsvc++
-			m.log.Debug("service status not found", "service", spec.Name)
-		}
-	}
+	// 	if !foundService {
+	// 		badsvc++
+	// 		m.log.Debug("service status not found", "service", spec.Name)
+	// 	}
+	// }
 
 	return badsvc == 0, nil
 }
 
-func (m *deploymentMonitor) runCloseLease(ctx context.Context) <-chan runner.Result {
-	return runner.Do(func() runner.Result {
-		// TODO: retry, timeout
-		err := m.session.Client().Tx().Broadcast(ctx, &mtypes.MsgCloseBid{
-			BidID: m.deployment.LeaseID().BidID(),
-		})
-		if err != nil {
-			m.log.Error("closing deployment", "err", err)
-		} else {
-			m.log.Info("bidding on lease closed")
-		}
-		return runner.NewResult(nil, err)
-	})
-}
+// func (m *deploymentMonitor) runCloseLease(ctx context.Context) <-chan runner.Result {
+// 	return runner.Do(func() runner.Result {
+// 		// TODO: retry, timeout
+// 		err := m.session.Client().Tx().Broadcast(ctx, &mtypes.MsgCloseBid{
+// 			BidID: m.deployment.LeaseID().BidID(),
+// 		})
+// 		if err != nil {
+// 			m.log.Error("closing deployment", "err", err)
+// 		} else {
+// 			m.log.Info("bidding on lease closed")
+// 		}
+// 		return runner.NewResult(nil, err)
+// 	})
+// }
 
 func (m *deploymentMonitor) publishStatus(status event.ClusterDeploymentStatus) {
 	if err := m.bus.Publish(event.ClusterDeployment{
