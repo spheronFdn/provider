@@ -184,7 +184,7 @@ loop:
 			}
 		case version := <-m.updatech:
 			m.log.Info("received version", "version", hex.EncodeToString(version))
-			//version not used atm
+			//ILIJA FIX : version not used atm
 			//it should be used for comaring manifest version and version from transaction
 			m.versions = append(m.versions, version)
 			m.clearFetched()

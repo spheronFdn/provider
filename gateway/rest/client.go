@@ -109,7 +109,7 @@ func NewClientILIJA(qclient aclient.QueryClient, addr sdk.Address) (Client, erro
 	// }
 	//ILIJA FIX 2
 
-	uri, err := url.Parse("https://localhost:8443")
+	uri, err := url.Parse("http://localhost:8443")
 	if err != nil {
 		return nil, err
 	}

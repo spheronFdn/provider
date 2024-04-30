@@ -5,8 +5,6 @@ import (
 	"math/rand"
 	"time"
 
-	aclient "github.com/akash-network/akash-api/go/node/client/v1beta2"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
@@ -20,7 +18,8 @@ import (
 	ctypes "github.com/akash-network/provider/cluster/types/v1beta3"
 	"github.com/akash-network/provider/event"
 	"github.com/akash-network/provider/session"
-	"github.com/akash-network/provider/tools/fromctx"
+
+	"github.com/akash-network/provider/spheron"
 )
 
 const (
@@ -36,6 +35,8 @@ var (
 	deploymentHealthCheckCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "provider_deployment_monitor_health",
 	}, []string{"state"})
+
+	spheronClient = spheron.NewHelperClient("http://localhost:8088")
 )
 
 type deploymentMonitor struct {
@@ -166,35 +167,36 @@ func (m *deploymentMonitor) runCheck(ctx context.Context) <-chan runner.Result {
 }
 
 func (m *deploymentMonitor) doCheck(ctx context.Context) (bool, error) {
-	ctx = fromctx.ApplyToContext(ctx, m.clusterSettings)
+	// ILIJA FIX : do not do close lease on it's own.
+	// ctx = fromctx.ApplyToContext(ctx, m.clusterSettings)
 
-	status, err := m.client.LeaseStatus(ctx, m.deployment.LeaseID())
+	// status, err := m.client.LeaseStatus(ctx, m.deployment.LeaseID())
 
-	if err != nil {
-		m.log.Error("lease status", "err", err)
-		return false, err
-	}
+	// if err != nil {
+	// 	m.log.Error("lease status", "err", err)
+	// 	return false, err
+	// }
 
 	badsvc := 0
 
-	for _, spec := range m.deployment.ManifestGroup().Services {
-		service, foundService := status[spec.Name]
-		if foundService {
-			if uint32(service.Available) < spec.Count {
-				badsvc++
-				m.log.Debug("service available replicas below target",
-					"service", spec.Name,
-					"available", service.Available,
-					"target", spec.Count,
-				)
-			}
-		}
+	// for _, spec := range m.deployment.ManifestGroup().Services {
+	// 	service, foundService := status[spec.Name]
+	// 	if foundService {
+	// 		if uint32(service.Available) < spec.Count {
+	// 			badsvc++
+	// 			m.log.Debug("service available replicas below target",
+	// 				"service", spec.Name,
+	// 				"available", service.Available,
+	// 				"target", spec.Count,
+	// 			)
+	// 		}
+	// 	}
 
-		if !foundService {
-			badsvc++
-			m.log.Debug("service status not found", "service", spec.Name)
-		}
-	}
+	// 	if !foundService {
+	// 		badsvc++
+	// 		m.log.Debug("service status not found", "service", spec.Name)
+	// 	}
+	// }
 
 	return badsvc == 0, nil
 }
@@ -202,10 +204,12 @@ func (m *deploymentMonitor) doCheck(ctx context.Context) (bool, error) {
 func (m *deploymentMonitor) runCloseLease(ctx context.Context) <-chan runner.Result {
 	return runner.Do(func() runner.Result {
 		// TODO: retry, timeout
-		msg := &mtypes.MsgCloseBid{
+		msg := mtypes.MsgCloseBid{
 			BidID: m.deployment.LeaseID().BidID(),
 		}
-		res, err := m.session.Client().Tx().Broadcast(ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError())
+		// res, err := m.session.Client().Tx().Broadcast(ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError())
+		res, err := spheronClient.CloseBid(ctx, msg)
+
 		if err != nil {
 			m.log.Error("closing deployment", "err", err)
 		} else {

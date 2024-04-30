@@ -86,6 +86,7 @@ func newRouter(log log.Logger, addr sdk.Address, pclient provider.Client, ctxCon
 	router := mux.NewRouter()
 
 	// store provider address in context as lease endpoints below need it
+
 	//ILIJA FIX 1
 	// router.Use(func(next http.Handler) http.Handler {
 	// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

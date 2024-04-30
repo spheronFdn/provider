@@ -1,7 +1,6 @@
 package grpc
 
 import (
-	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"fmt"
@@ -62,15 +61,17 @@ func OwnerFromCtx(ctx context.Context) sdk.Address {
 	return val.(sdk.Address)
 }
 
-func NewServer(ctx context.Context, endpoint string, certs []tls.Certificate, client provider.StatusClient) error {
+func NewServer(ctx context.Context, endpoint string,
+	// certs []tls.Certificate,
+	client provider.StatusClient) error {
 	// InsecureSkipVerify is set to true due to inability to use normal TLS verification
 	// certificate validation and authentication performed later in mtlsHandler
-	tlsConfig := &tls.Config{
-		Certificates:       certs,
-		ClientAuth:         tls.RequestClientCert,
-		InsecureSkipVerify: true, // nolint: gosec
-		MinVersion:         tls.VersionTLS13,
-	}
+	// tlsConfig := &tls.Config{
+	// 	Certificates:       certs,
+	// 	ClientAuth:         tls.RequestClientCert,
+	// 	InsecureSkipVerify: true, // nolint: gosec
+	// 	MinVersion:         tls.VersionTLS13,
+	// }
 
 	group, err := fromctx.ErrGroupFromCtx(ctx)
 	if err != nil {
@@ -79,10 +80,12 @@ func NewServer(ctx context.Context, endpoint string, certs []tls.Certificate, cl
 
 	log := fromctx.LogcFromCtx(ctx)
 
-	grpcSrv := grpc.NewServer(grpc.Creds(credentials.NewTLS(tlsConfig)), grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
-		MinTime:             30 * time.Second,
-		PermitWithoutStream: false,
-	}), grpc.ChainUnaryInterceptor(mtlsInterceptor()))
+	grpcSrv := grpc.NewServer(
+		// grpc.Creds(credentials.NewTLS(tlsConfig)),
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             30 * time.Second,
+			PermitWithoutStream: false,
+		}), grpc.ChainUnaryInterceptor(mtlsInterceptor()))
 
 	pRPC := &grpcProviderV1{
 		ctx:    ctx,

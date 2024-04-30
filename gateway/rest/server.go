@@ -24,10 +24,10 @@ func NewServer(
 	ctx context.Context,
 	log log.Logger,
 	pclient provider.Client,
-	cquery ctypes.QueryClient,
+	// cquery ctypes.QueryClient,
 	address string,
 	pid sdk.Address,
-	certs []tls.Certificate,
+	// certs []tls.Certificate,
 	clusterConfig map[interface{}]interface{}) (*http.Server, error) {
 
 	restMiddleware := func(next http.Handler) http.Handler {
@@ -57,12 +57,12 @@ func NewServer(
 		},
 	}
 
-	var err error
+	// var err error
 
-	srv.TLSConfig, err = gwutils.NewServerTLSConfig(context.Background(), certs, cquery)
-	if err != nil {
-		return nil, err
-	}
+	// srv.TLSConfig, err = gwutils.NewServerTLSConfig(context.Background(), certs, cquery)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	return srv, nil
 }

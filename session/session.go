@@ -10,16 +10,25 @@ import (
 // Session interface wraps Log, Client, Provider and ForModule methods
 type Session interface {
 	Log() log.Logger
-	Client() aclient.Client
+	// Client() aclient.Client
 	Provider() *ptypes.Provider
 	ForModule(string) Session
 	CreatedAtBlockHeight() int64
 }
 
 // New returns new session instance with provided details
-func New(log log.Logger, client aclient.Client, provider *ptypes.Provider, createdAtBlockHeight int64) Session {
+// func New(log log.Logger, client aclient.Client, provider *ptypes.Provider, createdAtBlockHeight int64) Session {
+// 	return session{
+// 		client:               client,
+// 		provider:             provider,
+// 		log:                  log,
+// 		createdAtBlockHeight: createdAtBlockHeight,
+// 	}
+// }
+
+func New(log log.Logger, provider *ptypes.Provider, createdAtBlockHeight int64) Session {
 	return session{
-		client:               client,
+		// client:               client,
 		provider:             provider,
 		log:                  log,
 		createdAtBlockHeight: createdAtBlockHeight,
@@ -37,9 +46,9 @@ func (s session) Log() log.Logger {
 	return s.log
 }
 
-func (s session) Client() aclient.Client {
-	return s.client
-}
+// func (s session) Client() aclient.Client {
+// 	return s.client
+// }
 
 func (s session) Provider() *ptypes.Provider {
 	return s.provider

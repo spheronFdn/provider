@@ -9,16 +9,12 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	btypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/tendermint/tendermint/libs/log"
-	tmrpc "github.com/tendermint/tendermint/rpc/core/types"
 
 	aclient "github.com/akash-network/akash-api/go/node/client/v1beta2"
-	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
 
 	"github.com/akash-network/node/pubsub"
-	netutil "github.com/akash-network/node/util/network"
 	"github.com/akash-network/node/util/runner"
-	"github.com/akash-network/node/x/escrow/client/util"
 
 	"github.com/akash-network/provider/event"
 	"github.com/akash-network/provider/session"
@@ -122,24 +118,24 @@ func (bc *balanceChecker) doEscrowCheck(ctx context.Context, lid mtypes.LeaseID,
 		resp.state = respStateScheduledWithdraw
 	}
 
-	var syncInfo *tmrpc.SyncInfo
-	syncInfo, resp.err = bc.session.Client().Node().SyncInfo(ctx)
-	if resp.err != nil {
-		return resp
-	}
+	// var syncInfo *tmrpc.SyncInfo
+	// syncInfo, resp.err = bc.session.Client().Node().SyncInfo(ctx)
+	// if resp.err != nil {
+	// 	return resp
+	// }
 
-	if syncInfo.CatchingUp {
-		resp.err = aclient.ErrNodeNotSynced
-		return resp
-	}
+	// if syncInfo.CatchingUp {
+	// 	resp.err = aclient.ErrNodeNotSynced
+	// 	return resp
+	// }
 
-	var dResp *dtypes.QueryDeploymentResponse
+	// var dResp *dtypes.QueryDeploymentResponse
 	var lResp *mtypes.QueryLeasesResponse
 
 	// Fetch the balance of the escrow account
-	dResp, resp.err = bc.aqc.Deployment(ctx, &dtypes.QueryDeploymentRequest{
-		ID: lid.DeploymentID(),
-	})
+	// dResp, resp.err = bc.aqc.Deployment(ctx, &dtypes.QueryDeploymentRequest{
+	// 	ID: lid.DeploymentID(),
+	// })
 
 	if resp.err != nil {
 		return resp
@@ -162,25 +158,25 @@ func (bc *balanceChecker) doEscrowCheck(ctx context.Context, lid mtypes.LeaseID,
 		totalLeaseAmount = totalLeaseAmount.Add(lease.Lease.Price.Amount)
 	}
 
-	balanceRemain := util.LeaseCalcBalanceRemain(dResp.EscrowAccount.TotalBalance().Amount,
-		syncInfo.LatestBlockHeight,
-		dResp.EscrowAccount.SettledAt,
-		totalLeaseAmount)
+	// balanceRemain := util.LeaseCalcBalanceRemain(dResp.EscrowAccount.TotalBalance().Amount,
+	// 	syncInfo.LatestBlockHeight,
+	// 	dResp.EscrowAccount.SettledAt,
+	// 	totalLeaseAmount)
 
-	blocksRemain := util.LeaseCalcBlocksRemain(balanceRemain, totalLeaseAmount)
+	// blocksRemain := util.LeaseCalcBlocksRemain(balanceRemain, totalLeaseAmount)
 
 	// lease is out of funds
-	if blocksRemain <= 0 {
-		resp.state = respStateOutOfFunds
-		resp.checkAfter = time.Minute * 10
-	} else {
-		blocksPerCheckInterval := int64(bc.cfg.LeaseFundsCheckInterval / netutil.AverageBlockTime)
-		if blocksRemain > blocksPerCheckInterval {
-			blocksRemain = blocksPerCheckInterval
-		}
+	// if blocksRemain <= 0 {
+	// 	resp.state = respStateOutOfFunds
+	// 	resp.checkAfter = time.Minute * 10
+	// } else {
+	// 	blocksPerCheckInterval := int64(bc.cfg.LeaseFundsCheckInterval / netutil.AverageBlockTime)
+	// 	if blocksRemain > blocksPerCheckInterval {
+	// 		blocksRemain = blocksPerCheckInterval
+	// 	}
 
-		resp.checkAfter = time.Duration(blocksRemain) * netutil.AverageBlockTime
-	}
+	// 	resp.checkAfter = time.Duration(blocksRemain) * netutil.AverageBlockTime
+	// }
 
 	return resp
 }
@@ -189,12 +185,12 @@ func (bc *balanceChecker) startWithdraw(ctx context.Context, lid mtypes.LeaseID)
 	ctx, cancel := context.WithTimeout(ctx, withdrawTimeout)
 	defer cancel()
 
-	msg := &mtypes.MsgWithdrawLease{
-		LeaseID: lid,
-	}
+	// msg := &mtypes.MsgWithdrawLease{
+	// 	LeaseID: lid,
+	// }
 
-	_, err := bc.session.Client().Tx().Broadcast(ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError())
-	return err
+	// _, err := bc.session.Client().Tx().Broadcast(ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError())
+	return nil
 }
 
 func (bc *balanceChecker) run(startCh chan<- error) {
