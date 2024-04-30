@@ -626,16 +626,18 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	statusResult, err := cctx.Client.Status(cmd.Context())
-	if err != nil {
-		return err
-	}
-	currentBlockHeight := statusResult.SyncInfo.LatestBlockHeight
+	// statusResult, err := cctx.Client.Status(cmd.Context())
+	// if err != nil {
+	// 	return err
+	// }
+	// currentBlockHeight := statusResult.SyncInfo.LatestBlockHeight
+	currentBlockHeight := time.Now().Unix() // Add block height later
 	session := session.New(logger, &pinfo, currentBlockHeight)
 
-	if err := cctx.Client.Start(); err != nil {
-		return err
-	}
+	// ILIJA FIX: Check if this is needed
+	// if err := cctx.Client.Start(); err != nil {
+	// 	return err
+	// }
 
 	bus := pubsub.NewBus()
 	defer bus.Close()
