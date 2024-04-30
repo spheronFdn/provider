@@ -5,8 +5,6 @@ import (
 	"math/rand"
 	"time"
 
-	aclient "github.com/akash-network/akash-api/go/node/client/v1beta2"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
@@ -21,6 +19,8 @@ import (
 	"github.com/akash-network/provider/event"
 	"github.com/akash-network/provider/session"
 	"github.com/akash-network/provider/tools/fromctx"
+
+	"github.com/akash-network/provider/spheron"
 )
 
 const (
@@ -36,6 +36,8 @@ var (
 	deploymentHealthCheckCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "provider_deployment_monitor_health",
 	}, []string{"state"})
+
+	spheronClient = spheron.NewHelperClient("http://localhost:8088")
 )
 
 type deploymentMonitor struct {
@@ -202,10 +204,12 @@ func (m *deploymentMonitor) doCheck(ctx context.Context) (bool, error) {
 func (m *deploymentMonitor) runCloseLease(ctx context.Context) <-chan runner.Result {
 	return runner.Do(func() runner.Result {
 		// TODO: retry, timeout
-		msg := &mtypes.MsgCloseBid{
+		msg := mtypes.MsgCloseBid{
 			BidID: m.deployment.LeaseID().BidID(),
 		}
-		res, err := m.session.Client().Tx().Broadcast(ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError())
+		// res, err := m.session.Client().Tx().Broadcast(ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError())
+		res, err := spheronClient.CloseBid(ctx, msg)
+
 		if err != nil {
 			m.log.Error("closing deployment", "err", err)
 		} else {

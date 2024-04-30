@@ -3,27 +3,14 @@ version: "2.0"
 
 services:
   web:
-    image: quay.io/ovrclk/demo-app
+    image: chentex/random-logger
     expose:
       - port: 80
         as: 80
-        http_options:
-          max_body_size: 2097152
-          next_cases:
-            - off
-        accept:
-          - hello.localhost
         to:
           - global: true
-  bew:
-    image: quay.io/ovrclk/demo-app
-    expose:
-      - port: 80
-        as: 80
-        accept:
-          - hello1.localhost
-        to:
-          - global: true
+    env:
+      - TEST=test
 
 profiles:
   compute:
@@ -40,16 +27,12 @@ profiles:
       attributes:
         region: us-west
       pricing:
-        web: 
+        web:
           denom: uakt
           amount: 1000
 
 deployment:
   web:
-    westcoast:
-      profile: web
-      count: 1
-  bew:
     westcoast:
       profile: web
       count: 1

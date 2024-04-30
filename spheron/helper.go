@@ -94,6 +94,17 @@ func (client *HelperClient) CreateBid(ctx context.Context, bidMsg v1beta4.MsgCre
 	return respObj, err
 }
 
+func (client *HelperClient) CloseBid(ctx context.Context, bidMsg v1beta4.MsgCloseBid) (interface{}, error) {
+	resp, err := client.SendPostRequest(ctx, "/bid/close", bidMsg)
+
+	var respObj interface{}
+	if err := json.Unmarshal(resp, &respObj); err != nil {
+		return dtypes.Group{}, fmt.Errorf("error decoding JSON: %v", err)
+	}
+
+	return respObj, err
+}
+
 func (client *HelperClient) GetBid(ctx context.Context, dseq uint64) (*v1beta4.QueryBidResponse, error) {
 	endpoint := fmt.Sprintf("/bid/%d", dseq)
 
@@ -135,6 +146,22 @@ func (client *HelperClient) GetLeases(ctx context.Context, dseq uint64) (*v1beta
 	}
 
 	var response v1beta4.QueryLeasesResponse
+	if err := json.Unmarshal(responseData, &response); err != nil {
+		return nil, fmt.Errorf("error decoding JSON: %v", err)
+	}
+
+	return &response, nil
+}
+
+func (client *HelperClient) GetOrders(ctx context.Context, provider string) (*v1beta4.QueryOrdersResponse, error) {
+	endpoint := fmt.Sprintf("/orders?provider=%s", provider)
+
+	responseData, err := client.SendRequest(ctx, endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("error sending request JSON: %v", err)
+	}
+
+	var response v1beta4.QueryOrdersResponse
 	if err := json.Unmarshal(responseData, &response); err != nil {
 		return nil, fmt.Errorf("error decoding JSON: %v", err)
 	}

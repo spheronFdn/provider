@@ -4,9 +4,7 @@ import (
 	"context"
 	"time"
 
-	aclient "github.com/akash-network/akash-api/go/node/client/v1beta2"
 	"github.com/boz/go-lifecycle"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/tendermint/tendermint/libs/log"
 
@@ -57,6 +55,8 @@ func (wd *watchdog) stop() {
 }
 
 func (wd *watchdog) run() {
+	ctx, _ := context.WithCancel(context.Background())
+
 	defer wd.lc.ShutdownCompleted()
 
 	var runch <-chan runner.Result
@@ -69,7 +69,7 @@ func (wd *watchdog) run() {
 		wd.log.Info("watchdog closing bid")
 
 		runch = runner.Do(func() runner.Result {
-			msg := &types.MsgCloseBid{
+			msg := types.MsgCloseBid{
 				BidID: types.BidID{
 					Owner:    wd.leaseID.OrderID().Owner,
 					DSeq:     wd.leaseID.OrderID().DSeq,
@@ -80,7 +80,9 @@ func (wd *watchdog) run() {
 				// BidID: types.MakeBidID(wd.leaseID.OrderID(), wd.sess.Provider().Address()),
 			}
 
-			return runner.NewResult(wd.sess.Client().Tx().Broadcast(wd.ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError()))
+			// return runner.NewResult(wd.sess.Client().Tx().Broadcast(wd.ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError()))
+
+			return runner.NewResult(spheronClient.CloseBid(ctx, msg))
 		})
 	case err = <-wd.lc.ShutdownRequest():
 	}

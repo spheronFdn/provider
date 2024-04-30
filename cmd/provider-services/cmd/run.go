@@ -1,17 +1,13 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
-	"crypto/tls"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	cltypes "github.com/akash-network/akash-api/go/node/client/types"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
@@ -31,15 +27,12 @@ import (
 	types_v1beta3 "github.com/akash-network/akash-api/go/node/types/v1beta3"
 
 	"github.com/akash-network/node/cmd/common"
-	"github.com/akash-network/node/events"
 	"github.com/akash-network/node/pubsub"
 	"github.com/akash-network/node/sdl"
-	cutils "github.com/akash-network/node/x/cert/utils"
 	config2 "github.com/akash-network/node/x/provider/config"
 
 	"github.com/akash-network/provider"
 	"github.com/akash-network/provider/bidengine"
-	"github.com/akash-network/provider/client"
 	"github.com/akash-network/provider/cluster"
 	"github.com/akash-network/provider/cluster/kube"
 	"github.com/akash-network/provider/cluster/kube/builder"
@@ -545,33 +538,33 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	cctx = cctx.WithSkipConfirmation(true)
 
-	opts, err := cltypes.ClientOptionsFromFlags(cmd.Flags())
-	if err != nil {
-		return err
-	}
+	// opts, err := cltypes.ClientOptionsFromFlags(cmd.Flags())
+	// if err != nil {
+	// 	return err
+	// }
 
-	cl, err := client.DiscoverClient(ctx, cctx, opts...)
-	if err != nil {
-		return err
-	}
+	// cl, err := client.DiscoverClient(ctx, cctx, opts...)
+	// if err != nil {
+	// 	return err
+	// }
 
 	gwaddr := viper.GetString(FlagGatewayListenAddress)
 	grpcaddr := viper.GetString(FlagGatewayGRPCListenAddress)
 
-	var certFromFlag io.Reader
-	if val := cmd.Flag(FlagAuthPem).Value.String(); val != "" {
-		certFromFlag = bytes.NewBufferString(val)
-	}
+	// var certFromFlag io.Reader
+	// if val := cmd.Flag(FlagAuthPem).Value.String(); val != "" {
+	// 	certFromFlag = bytes.NewBufferString(val)
+	// }
 
-	kpm, err := cutils.NewKeyPairManager(cl.ClientContext(), cctx.FromAddress)
-	if err != nil {
-		return err
-	}
+	// kpm, err := cutils.NewKeyPairManager(cl.ClientContext(), cctx.FromAddress)
+	// if err != nil {
+	// 	return err
+	// }
 
-	_, tlsCert, err := kpm.ReadX509KeyPair(certFromFlag)
-	if err != nil {
-		return err
-	}
+	// _, tlsCert, err := kpm.ReadX509KeyPair(certFromFlag)
+	// if err != nil {
+	// 	return err
+	// }
 
 	//ILIJA FIX 1
 	// Check that the certificate exists on chain and is not revoked
@@ -638,7 +631,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	currentBlockHeight := statusResult.SyncInfo.LatestBlockHeight
-	session := session.New(logger, cl, &pinfo, currentBlockHeight)
+	session := session.New(logger, &pinfo, currentBlockHeight)
 
 	if err := cctx.Client.Start(); err != nil {
 		return err
@@ -744,24 +737,27 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		ctx,
 		logger,
 		service,
-		cl.Query(),
+		// cl.Query(),
 		gwaddr,
 		cctx.FromAddress,
-		[]tls.Certificate{tlsCert},
+		// []tls.Certificate{tlsCert},
 		clusterSettings,
 	)
 	if err != nil {
 		return err
 	}
 
-	err = gwgrpc.NewServer(ctx, grpcaddr, []tls.Certificate{tlsCert}, service)
+	err = gwgrpc.NewServer(ctx, grpcaddr,
+		// []tls.Certificate{tlsCert},
+		service)
 	if err != nil {
 		return err
 	}
 
-	group.Go(func() error {
-		return events.Publish(ctx, cctx.Client, "provider-cli", bus)
-	})
+	//Remove publishing of cosmos events to local bus
+	// group.Go(func() error {
+	// 	return events.Publish(ctx, cctx.Client, "provider-cli", bus)
+	// })
 
 	group.Go(func() error {
 		<-service.Done()
@@ -770,7 +766,9 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	group.Go(func() error {
 		// certificates are supplied via tls.Config
-		return gwRest.ListenAndServeTLS("", "")
+		// return gwRest.ListenAndServeTLS("", "")
+		//ILIJA FIX
+		return gwRest.ListenAndServe()
 	})
 
 	group.Go(func() error {

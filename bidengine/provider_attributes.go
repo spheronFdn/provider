@@ -318,16 +318,29 @@ func (pass *providerAttrSignatureService) fetch(ctx context.Context, auditor str
 	}
 
 	pass.session.Log().Info("fetching provider auditor attributes", "auditor", req.Auditor, "provider", req.Owner)
-	result, err := pass.session.Client().Query().ProviderAuditorAttributes(ctx, req)
-	if err != nil {
-		// Error type is always "errors.fundamental" so use pattern matching here
-		if invalidProviderPattern.MatchString(err.Error()) {
-			return auditedAttrResult{auditor: auditor} // No data
-		}
-		return auditedAttrResult{auditor: auditor, err: err}
+	//ILIJA FIX 1
+	// result, err := pass.session.Client().Query().ProviderAuditorAttributes(ctx, req)
+	// if err != nil {
+	// 	// Error type is always "errors.fundamental" so use pattern matching here
+	// 	if invalidProviderPattern.MatchString(err.Error()) {
+	// 		return auditedAttrResult{auditor: auditor} // No data
+	// 	}
+	// 	return auditedAttrResult{auditor: auditor, err: err}
+	// }
+	//ILIJA FIX 2
+
+	// value := result.GetProviders()
+
+	value := []atypes.Provider{
+		{
+			Owner: "provider",
+			Attributes: types.Attributes{
+				types.Attribute{Key: "region", Value: "us-west"},
+				types.Attribute{Key: "capabilities/storage/1/persistent", Value: "true"},
+			},
+		},
 	}
 
-	value := result.GetProviders()
 	pass.session.Log().Info("got auditor attributes", "auditor", auditor, "size", providerAttrSize(value))
 
 	return auditedAttrResult{

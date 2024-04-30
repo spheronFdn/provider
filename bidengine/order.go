@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"time"
 
-	aclient "github.com/akash-network/akash-api/go/node/client/v1beta2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
@@ -515,7 +514,7 @@ loop:
 		if bidPlaced {
 			o.log.Debug("closing bid", "order-id", o.orderID)
 
-			msg := &mtypes.MsgCloseBid{
+			msg := mtypes.MsgCloseBid{
 				// BidID: mtypes.MakeBidID(o.orderID, o.session.Provider().Address()),
 				BidID: mtypes.BidID{
 					Owner:    o.orderID.Owner,
@@ -526,7 +525,10 @@ loop:
 				},
 			}
 
-			_, err := o.session.Client().Tx().Broadcast(ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError())
+			// _, err := o.session.Client().Tx().Broadcast(ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError())
+
+			_, err := spheronClient.CloseBid(ctx, msg)
+
 			if err != nil {
 				o.log.Error("closing bid", "err", err)
 				bidCounter.WithLabelValues("close", metricsutils.FailLabel).Inc()

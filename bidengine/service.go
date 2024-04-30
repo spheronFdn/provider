@@ -11,8 +11,6 @@ import (
 
 	"github.com/boz/go-lifecycle"
 
-	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
-
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
 	"github.com/akash-network/node/pubsub"
 	mquery "github.com/akash-network/node/x/market/query"
@@ -260,13 +258,18 @@ loop:
 }
 
 func queryExistingOrders(ctx context.Context, session session.Session) ([]mtypes.OrderID, error) {
-	params := &mtypes.QueryOrdersRequest{
-		Filters: mtypes.OrderFilters{},
-		Pagination: &sdkquery.PageRequest{
-			Limit: 10000,
-		},
-	}
-	res, err := session.Client().Query().Orders(ctx, params)
+	//ILIJA FIX 1
+	// params := &mtypes.QueryOrdersRequest{
+	// 	Filters: mtypes.OrderFilters{},
+	// 	Pagination: &sdkquery.PageRequest{
+	// 		Limit: 10000,
+	// 	},
+	// }
+	// res, err := session.Client().Query().Orders(ctx, params)
+	//ILIJA FIX 2
+
+	res, err := spheronClient.GetOrders(ctx, "provider")
+
 	if err != nil {
 		session.Log().Error("error querying open orders:", "err", err)
 		return nil, err
