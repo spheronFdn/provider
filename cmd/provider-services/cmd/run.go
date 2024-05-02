@@ -671,11 +671,6 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	config.BalanceCheckerCfg = provider.BalanceCheckerConfig{
-		WithdrawalPeriod:        viper.GetDuration(FlagWithdrawalPeriod),
-		LeaseFundsCheckInterval: viper.GetDuration(FlagLeaseFundsMonitorInterval),
-	}
-
 	config.BidPricingStrategy = pricing
 	config.ClusterSettings = clusterSettings
 

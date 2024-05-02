@@ -91,13 +91,6 @@ func NewService(ctx context.Context,
 	// 	return nil, err
 	// }
 
-	// bc, err := newBalanceChecker(ctx, bankTypes.NewQueryClient(cctx), cl, accAddr, session, bus, cfg.BalanceCheckerCfg)
-	// if err != nil {
-	// 	session.Log().Error("starting balance checker", "err", err)
-	// 	cancel()
-	// 	return nil, err
-	// }
-
 	cluster, err := cluster.NewService(ctx, session, bus, cclient, waiter, clusterConfig)
 	if err != nil {
 		cancel()
@@ -168,7 +161,6 @@ type service struct {
 	cluster   cluster.Service
 	bidengine bidengine.Service
 	manifest  manifest.Service
-	// bc        *balanceChecker
 
 	ctx    context.Context
 	cancel context.CancelFunc
