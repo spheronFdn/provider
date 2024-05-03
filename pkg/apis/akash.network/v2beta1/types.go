@@ -7,8 +7,6 @@ import (
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
-
 	maniv2beta1 "github.com/akash-network/akash-api/go/manifest/v2beta1"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta2"
 	types "github.com/akash-network/akash-api/go/node/types/v1beta2"
@@ -102,15 +100,8 @@ type LeaseID struct {
 
 // ToAkash returns LeaseID from LeaseID details
 func (id LeaseID) ToAkash() (mtypes.LeaseID, error) {
-	owner, err := sdk.AccAddressFromBech32(id.Owner)
-	if err != nil {
-		return mtypes.LeaseID{}, err
-	}
-
-	provider, err := sdk.AccAddressFromBech32(id.Provider)
-	if err != nil {
-		return mtypes.LeaseID{}, err
-	}
+	owner := id.Owner
+	provider := id.Provider
 
 	dseq, err := strconv.ParseUint(id.DSeq, 10, 64)
 	if err != nil {
@@ -118,11 +109,11 @@ func (id LeaseID) ToAkash() (mtypes.LeaseID, error) {
 	}
 
 	return mtypes.LeaseID{
-		Owner:    owner.String(),
+		Owner:    owner,
 		DSeq:     dseq,
 		GSeq:     id.GSeq,
 		OSeq:     id.OSeq,
-		Provider: provider.String(),
+		Provider: provider,
 	}, nil
 }
 

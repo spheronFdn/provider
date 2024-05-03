@@ -10,8 +10,8 @@ import (
 
 	cutils "github.com/akash-network/node/x/cert/utils"
 
-	aclient "github.com/akash-network/provider/client"
 	gwrest "github.com/akash-network/provider/gateway/rest"
+	"github.com/akash-network/provider/spheron"
 )
 
 var errEmptyHostnames = errors.New("hostnames cannot be empty")
@@ -26,12 +26,7 @@ func migrateHostnames(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ctx := cmd.Context()
-
-	cl, err := aclient.DiscoverQueryClient(ctx, cctx)
-	if err != nil {
-		return err
-	}
+	cl := spheron.NewClient("http://localhost:8088")
 
 	prov, err := providerFromFlags(cmd.Flags())
 	if err != nil {
@@ -43,7 +38,7 @@ func migrateHostnames(cmd *cobra.Command, args []string) error {
 		return markRPCServerError(err)
 	}
 
-	gclient, err := gwrest.NewClient(cl, prov, []tls.Certificate{cert})
+	gclient, err := gwrest.NewClient(*cl, prov, []tls.Certificate{cert})
 	if err != nil {
 		return err
 	}

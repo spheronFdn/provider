@@ -38,7 +38,7 @@ var (
 	errNoGroupForLease         = errors.New("group not found")
 	errManifestRejected        = errors.New("manifest rejected")
 
-	spheronClient = spheron.NewHelperClient("http://localhost:8088")
+	spheronClient = spheron.NewClient("http://localhost:8088")
 )
 
 func newManager(h *service, daddr dtypes.DeploymentID) *manager {
@@ -184,8 +184,7 @@ loop:
 			}
 		case version := <-m.updatech:
 			m.log.Info("received version", "version", hex.EncodeToString(version))
-			//ILIJA FIX : version not used atm
-			//it should be used for comaring manifest version and version from transaction
+			// Spheron fix: version not used atm. It should be used for comaring manifest version and version from transaction
 			m.versions = append(m.versions, version)
 			m.clearFetched()
 
@@ -257,28 +256,10 @@ type manifestManagerFetchDataResult struct {
 func (m *manager) doFetchData(ctx context.Context) (manifestManagerFetchDataResult, error) {
 	subctx, cancel := context.WithTimeout(ctx, m.config.RPCQueryTimeout)
 	defer cancel()
-	// ILIJA FIX 1
-	// deploymentResponse, err := m.session.Client().Query().Deployment(subctx, &dtypes.QueryDeploymentRequest{ID: m.daddr})
-	// ILIJA FIX 2
-
 	deploymentResponse, err := spheronClient.GetDeployment(subctx, m.daddr.DSeq)
 	if err != nil {
 		return manifestManagerFetchDataResult{}, err
 	}
-	// Ilija FIX 1
-	// leasesResponse, err := m.session.Client().Query().Leases(subctx, &mtypes.QueryLeasesRequest{
-	// 	Filters: mtypes.LeaseFilters{
-	// 		Owner:    m.daddr.Owner,
-	// 		DSeq:     m.daddr.DSeq,
-	// 		GSeq:     0,
-	// 		OSeq:     0,
-	// 		Provider: m.session.Provider().GetOwner(),
-	// 		State:    mtypes.LeaseActive.String(),
-	// 	},
-	// 	Pagination: nil,
-	// })
-	// Ilija FIX 1
-
 	leasesResponse, err := spheronClient.GetLeases(subctx, m.daddr.DSeq)
 	if err != nil {
 		return manifestManagerFetchDataResult{}, err
@@ -418,28 +399,21 @@ func (m *manager) validateRequest(req manifestRequest) error {
 	default:
 	}
 
-	// ensure that an uploaded manifest matches the hash declared on
-	// the Akash Deployment.Version
-	//ILIJA FIX 1
+	// TODO(spheron): Ensure that an uploaded manifest matches the hash declared on Deployment.Version
 	// version, err := req.value.Manifest.Version()
 	// if err != nil {
 	// 	return err
 	// }
-
 	// var versionExpected []byte
-
 	// if len(m.versions) != 0 {
 	// 	versionExpected = m.versions[len(m.versions)-1]
 	// } else {
 	// 	versionExpected = m.data.Deployment.Version
 	// }
-
 	// if !bytes.Equal(version, versionExpected) {
 	// 	m.log.Info("deployment version mismatch", "expected", m.data.Deployment.Version, "got", version)
 	// 	return ErrManifestVersion
 	// }
-	//ILIJA FIX 2
-
 	// if err = req.value.Manifest.CheckAgainstDeployment(m.data.Groups); err != nil {
 	// 	return err
 	// }
@@ -461,12 +435,11 @@ func (m *manager) validateRequest(req manifestRequest) error {
 func (m *manager) checkHostnamesForManifest(requestManifest maniv2beta2.Manifest, groupNames []string) error {
 	// Check if the hostnames are available. Do not block forever
 
-	//ILIJA FIX 1
+	// TODO(spheron): extract owner address from deployment, don't hardcode it
 	// ownerAddr, err := m.data.GetDeployment().DeploymentID.GetOwnerAddress()
 	// if err != nil {
 	// 	return err
 	// }
-	//ILIJA FIX 2
 
 	ownerAddr := "owner"
 

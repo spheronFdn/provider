@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/gorilla/mux"
 	"github.com/tendermint/tendermint/libs/log"
 	kubeErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -540,12 +539,7 @@ func handleIPLeaseStatusGet(op *ipOperator, rw http.ResponseWriter, req *http.Re
 	}
 
 	owner := vars["owner"]
-	_, err = sdk.AccAddressFromBech32(owner) // Validate this is a bech32 address
-	if err != nil {
-		op.log.Error("could not parse owner address as bech32", "onwer", owner, "error", err)
-		rw.WriteHeader(http.StatusNotFound)
-		return
-	}
+	// TODO(spheron): check if owner address is valid
 
 	leaseID := mtypes.LeaseID{
 		Owner:    owner,

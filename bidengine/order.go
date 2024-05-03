@@ -77,7 +77,7 @@ var (
 		Help: "",
 	}, []string{"result"})
 
-	spheronClient = spheron.NewHelperClient("http://localhost:8088")
+	spheronClient = spheron.NewClient("http://localhost:8088")
 )
 
 func newOrder(svc *service, oid mtypes.OrderID, cfg Config, pass ProviderAttrSignatureService, checkForExistingBid bool) (*order, error) {
@@ -174,14 +174,6 @@ func (o *order) run(checkForExistingBid bool) {
 		// msg *mtypes.MsgCreateBid
 	)
 
-	//ILIJA FIX 1
-	// Begin fetching group details immediately.
-	// groupch = runner.Do(func() runner.Result {
-	// 	res, err := o.session.Client().Query().Group(ctx, &dtypes.QueryGroupRequest{ID: o.orderID.GroupID()})
-	// 	return runner.NewResult(res.GetGroup(), err)
-	// })
-	//ILIJA FIX 2
-
 	groupch = runner.Do(func() runner.Result {
 		res, err := spheronClient.GetGroup(ctx, o.orderID.GroupID().DSeq)
 		return runner.NewResult(res, err)
@@ -190,15 +182,6 @@ func (o *order) run(checkForExistingBid bool) {
 	// Load existing bid if needed
 	if checkForExistingBid {
 		queryBidCh = runner.Do(func() runner.Result {
-			//ILIJA FIX 1
-			// return runner.NewResult(o.session.Client().Query().Bid(
-			// 	ctx,
-			// 	&mtypes.QueryBidRequest{
-			// 		ID: mtypes.MakeBidID(o.orderID, o.session.Provider().Address()),
-			// 	},
-			// ))
-			//ILIJA FIX 2
-
 			res, err := spheronClient.GetBid(ctx, o.orderID.GroupID().DSeq)
 			return runner.NewResult(res, err)
 		})
@@ -272,14 +255,7 @@ loop:
 					break loop
 				}
 
-				//ILIJA FIX 1
-				// if ev.ID.Provider != o.session.Provider().Address().String() {
-				// 	orderCompleteCounter.WithLabelValues("lease-lost").Inc()
-				// 	o.log.Info("lease lost", "lease", ev.ID)
-				// 	bidPlaced = false // Lease lost, network closes bid
-				// 	break loop
-				// }
-				//ILIJA FIX 2
+				// TODO(spheron): compare event.ID.Provider to o.session.Provider.Address so that provider knows if he lost the bid
 				orderCompleteCounter.WithLabelValues("lease-won").Inc()
 
 				// TODO: sanity check (price, state, etc...)
@@ -432,26 +408,7 @@ loop:
 
 			offer := mtypes.ResourceOfferFromRU(reservation.GetAllocatedResources())
 
-			//ILIJA FIX 1
-
-			// Begin submitting fulfillment
-			// msg = mtypes.NewMsgCreateBid(o.orderID, o.session.Provider().Address(), price, o.cfg.Deposit, offer)
-
-			// if msg == nil {
-			// 	o.log.Error("error creating bit msg", "err", result.Error())
-			// 	break loop
-			// }
-
-			// if msg == nil {
-			// 	o.log.Error("error creating bit msg", "err", result.Error())
-			// 	break loop
-			// }
-
-			// bidch = runner.Do(func() runner.Result {
-			// 	return runner.NewResult(o.session.Client().Tx().Broadcast(ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError()))
-			// })
-			//ILIJA FIX 2
-
+			// TODO(spheron): make provider address dynamic
 			msg := mtypes.MsgCreateBid{
 				Order:          o.orderID,
 				Provider:       "provider",

@@ -3,7 +3,6 @@ package rest
 import (
 	"bufio"
 	"context"
-	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -16,7 +15,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
 	gcontext "github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -82,24 +80,15 @@ type wsStreamConfig struct {
 	client    cluster.ReadClient
 }
 
-func newRouter(log log.Logger, addr sdk.Address, pclient provider.Client, ctxConfig map[interface{}]interface{}, middlewares ...mux.MiddlewareFunc) *mux.Router {
+func newRouter(log log.Logger, addr string, pclient provider.Client, ctxConfig map[interface{}]interface{}, middlewares ...mux.MiddlewareFunc) *mux.Router {
 	router := mux.NewRouter()
 
 	// store provider address in context as lease endpoints below need it
 
-	//ILIJA FIX 1
-	// router.Use(func(next http.Handler) http.Handler {
-	// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	// 		gcontext.Set(r, providerContextKey, addr)
-
-	// 		next.ServeHTTP(w, r)
-	// 	})
-	// })
-	//ILIJA FIX 2
+	// Spheron fix: hardcoded provider string instead of 'addr'
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			gcontext.Set(r, providerContextKey, "provider")
-
 			next.ServeHTTP(w, r)
 		})
 	})
@@ -126,18 +115,6 @@ func newRouter(log log.Logger, addr sdk.Address, pclient provider.Client, ctxCon
 
 	vrouter := router.NewRoute().Subrouter()
 	vrouter.Use(requireOwner())
-
-	// GET /validate
-	// validate endpoint checks if provider will bid on given groupspec
-	vrouter.HandleFunc("/validate",
-		validateHandler(log, pclient)).
-		Methods("GET")
-
-	// GET /wiboy (aka would I bid on you)
-	// validate endpoint checks if provider will bid on given groupspec
-	vrouter.HandleFunc("/wiboy",
-		validateHandler(log, pclient)).
-		Methods("GET")
 
 	// PUT
 	shperonRouter := router.PathPrefix(spheronPathPrefix).Subrouter()
@@ -222,31 +199,6 @@ func newRouter(log log.Logger, addr sdk.Address, pclient provider.Client, ctxCon
 	return router
 }
 
-func newJwtServerRouter(addr sdk.Address, privateKey interface{}, jwtExpiresAfter time.Duration, certSerialNumber string) *mux.Router {
-	router := mux.NewRouter()
-
-	router.HandleFunc("/jwt",
-		jwtServiceHandler(addr, privateKey, jwtExpiresAfter, certSerialNumber)).
-		Methods("GET")
-
-	return router
-}
-
-func newResourceServerRouter(log log.Logger, providerAddr sdk.Address, publicKey *ecdsa.PublicKey, lokiGwAddr string) *mux.Router {
-	router := mux.NewRouter()
-
-	// add a middleware to verify the JWT provided in Authorization header
-	router.Use(resourceServerAuth(log, providerAddr, publicKey))
-
-	lrouter := router.PathPrefix(leasePathPrefix).Subrouter()
-	lrouter.Use(requireLeaseID())
-
-	lokiServiceRouter := lrouter.PathPrefix("/loki-service").Subrouter()
-	lokiServiceRouter.NewRoute().Handler(lokiServiceHandler(log, lokiGwAddr))
-
-	return router
-}
-
 // lokiServiceHandler forwards all requests to the loki instance running in provider's cluster.
 // Example:
 //
@@ -283,39 +235,6 @@ func lokiServiceHandler(log log.Logger, lokiGwAddr string) http.HandlerFunc {
 		// serve the request using the reverse proxy
 		log.Info("Forwarding request to loki", "HTTP_API", pathSplits[6])
 		reverseProxy.ServeHTTP(w, r)
-	}
-}
-
-func jwtServiceHandler(paddr sdk.Address, privateKey interface{}, jwtExpiresAfter time.Duration, certSerialNumber string) http.HandlerFunc {
-	return func(writer http.ResponseWriter, request *http.Request) {
-		now := time.Now()
-		claim := ClientCustomClaims{
-			AkashNamespace: &AkashNamespace{
-				V1: &ClaimsV1{
-					CertSerialNumber: certSerialNumber,
-				},
-			},
-			RegisteredClaims: jwt.RegisteredClaims{
-				ExpiresAt: jwt.NewNumericDate(now.Add(jwtExpiresAfter)),
-				IssuedAt:  jwt.NewNumericDate(now),
-				// account address of the tenant: trustable as it has already been verified by mTLS
-				Subject: request.TLS.PeerCertificates[0].Subject.CommonName,
-				Issuer:  paddr.String(),
-			},
-		}
-
-		token := jwt.NewWithClaims(jwt.SigningMethodES256, &claim)
-		jwtString, err := token.SignedString(privateKey)
-		if err != nil {
-			http.Error(writer, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		_, err = io.WriteString(writer, jwtString)
-		if err != nil {
-			http.Error(writer, err.Error(), http.StatusInternalServerError)
-			return
-		}
 	}
 }
 
@@ -506,12 +425,12 @@ func leaseShellHandler(log log.Logger, mclient pmanifest.Client, cclient cluster
 	}
 }
 
-func createAddressHandler(log log.Logger, providerAddr sdk.Address) http.HandlerFunc {
+func createAddressHandler(log log.Logger, providerAddr string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		data := struct {
 			Address string `json:"address"`
 		}{
-			Address: providerAddr.String(),
+			Address: providerAddr,
 		}
 		writeJSON(log, w, data)
 	}
@@ -537,7 +456,7 @@ func createVersionHandler(log log.Logger, pclient provider.Client) http.HandlerF
 	}
 }
 
-func createStatusHandler(log log.Logger, sclient provider.StatusClient, providerAddr sdk.Address) http.HandlerFunc {
+func createStatusHandler(log log.Logger, sclient provider.StatusClient, providerAddr string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		status, err := sclient.Status(req.Context())
 		if err != nil {
@@ -549,40 +468,9 @@ func createStatusHandler(log log.Logger, sclient provider.StatusClient, provider
 			Address string `json:"address"`
 		}{
 			Status:  *status,
-			Address: providerAddr.String(),
+			Address: providerAddr,
 		}
 		writeJSON(log, w, data)
-	}
-}
-
-func validateHandler(log log.Logger, cl provider.ValidateClient) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		data, err := io.ReadAll(req.Body)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		if len(data) == 0 {
-			http.Error(w, "empty payload", http.StatusBadRequest)
-			return
-		}
-
-		owner := requestOwner(req)
-
-		var gspec dtypes.GroupSpec
-
-		if err := json.Unmarshal(data, &gspec); err != nil {
-			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
-			return
-		}
-
-		validate, err := cl.Validate(req.Context(), owner, gspec)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		writeJSON(log, w, validate)
 	}
 }
 

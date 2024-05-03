@@ -258,16 +258,6 @@ loop:
 }
 
 func queryExistingOrders(ctx context.Context, session session.Session) ([]mtypes.OrderID, error) {
-	//ILIJA FIX 1
-	// params := &mtypes.QueryOrdersRequest{
-	// 	Filters: mtypes.OrderFilters{},
-	// 	Pagination: &sdkquery.PageRequest{
-	// 		Limit: 10000,
-	// 	},
-	// }
-	// res, err := session.Client().Query().Orders(ctx, params)
-	//ILIJA FIX 2
-
 	res, err := spheronClient.GetOrders(ctx, "provider")
 
 	if err != nil {

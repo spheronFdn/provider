@@ -336,7 +336,6 @@ func (dm *deploymentManager) doDeploy(ctx context.Context) ([]string, []string, 
 		cancel()
 	}()
 
-	// ILIJA TU SMO
 	if err = dm.checkLeaseActive(ctx); err != nil {
 		return nil, nil, err
 	}

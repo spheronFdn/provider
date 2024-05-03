@@ -7,9 +7,8 @@ import (
 	"fmt"
 	"net/url"
 
-	aclient "github.com/akash-network/akash-api/go/node/client/v1beta2"
+	"github.com/akash-network/provider/spheron"
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -80,20 +79,15 @@ func dseqFromFlags(flags *pflag.FlagSet) (uint64, error) {
 	return flags.GetUint64(FlagDSeq)
 }
 
-func providerFromFlags(flags *pflag.FlagSet) (sdk.Address, error) {
+func providerFromFlags(flags *pflag.FlagSet) (string, error) {
 	provider, err := flags.GetString(FlagProvider)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	addr, err := sdk.AccAddressFromBech32(provider)
-	if err != nil {
-		return nil, err
-	}
-
-	return addr, nil
+	return provider, nil
 }
 
-func leasesForDeployment(ctx context.Context, cl aclient.QueryClient, flags *pflag.FlagSet, did dtypes.DeploymentID) ([]mtypes.LeaseID, error) {
+func leasesForDeployment(ctx context.Context, cl spheron.Client, flags *pflag.FlagSet, did dtypes.DeploymentID) ([]mtypes.LeaseID, error) {
 	filter := mtypes.LeaseFilters{
 		Owner: did.Owner,
 		DSeq:  did.DSeq,
@@ -106,7 +100,7 @@ func leasesForDeployment(ctx context.Context, cl aclient.QueryClient, flags *pfl
 			return nil, err
 		}
 
-		filter.Provider = prov.String()
+		filter.Provider = prov
 	}
 
 	if val, err := flags.GetUint32(FlagGSeq); flags.Changed(FlagGSeq) && err == nil {

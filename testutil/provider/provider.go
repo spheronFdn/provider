@@ -131,22 +131,6 @@ func RunLocalProvider(ctx context.Context, clientCtx cosmosclient.Context, chain
 	return testutilcli.ExecTestCLICmd(ctx, clientCtx, cmd, args...)
 }
 
-func RunProviderJWTServer(ctx context.Context, clientCtx cosmosclient.Context, from, jwtGatewayListenAddress string, extraArgs ...string) (sdktest.BufferWriter,
-	error) {
-	takeCmdLock()
-	cmd := pcmd.AuthServerCmd()
-	releaseCmdLock()
-
-	args := []string{
-		fmt.Sprintf("--from=%s", from),
-		fmt.Sprintf("--%s=%s", pcmd.FlagJwtAuthListenAddress, jwtGatewayListenAddress),
-	}
-
-	args = append(args, extraArgs...)
-
-	return testutilcli.ExecTestCLICmd(ctx, clientCtx, cmd, args...)
-}
-
 func RunLocalHostnameOperator(ctx context.Context, clientCtx cosmosclient.Context, listenPort int) (sdktest.BufferWriter, error) {
 	takeCmdLock()
 	cmd := operator.OperatorsCmd()

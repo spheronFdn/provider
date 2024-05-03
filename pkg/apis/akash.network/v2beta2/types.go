@@ -5,7 +5,6 @@ import (
 	"math"
 	"strconv"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/pkg/errors"
 
 	mani "github.com/akash-network/akash-api/go/manifest/v2beta2"
@@ -51,15 +50,8 @@ type LeaseID struct {
 
 // FromCRD returns LeaseID from LeaseID details
 func (id LeaseID) FromCRD() (mtypes.LeaseID, error) {
-	owner, err := sdk.AccAddressFromBech32(id.Owner)
-	if err != nil {
-		return mtypes.LeaseID{}, err
-	}
-
-	provider, err := sdk.AccAddressFromBech32(id.Provider)
-	if err != nil {
-		return mtypes.LeaseID{}, err
-	}
+	owner := id.Owner
+	provider := id.Provider
 
 	dseq, err := strconv.ParseUint(id.DSeq, 10, 64)
 	if err != nil {
@@ -67,11 +59,11 @@ func (id LeaseID) FromCRD() (mtypes.LeaseID, error) {
 	}
 
 	return mtypes.LeaseID{
-		Owner:    owner.String(),
+		Owner:    owner,
 		DSeq:     dseq,
 		GSeq:     id.GSeq,
 		OSeq:     id.OSeq,
-		Provider: provider.String(),
+		Provider: provider,
 	}, nil
 }
 

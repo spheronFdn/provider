@@ -2,13 +2,12 @@ package cmd
 
 import (
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/spf13/cobra"
 
 	cmdcommon "github.com/akash-network/node/cmd/common"
 
-	aclient "github.com/akash-network/provider/client"
 	gwrest "github.com/akash-network/provider/gateway/rest"
+	"github.com/akash-network/provider/spheron"
 )
 
 func statusCmd() *cobra.Command {
@@ -18,11 +17,8 @@ func statusCmd() *cobra.Command {
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			addr, err := sdk.AccAddressFromBech32(args[0])
-			if err != nil {
-				return err
-			}
-
+			// Spheron fix: take address as a string
+			addr := args[0]
 			return doStatus(cmd, addr)
 		},
 	}
@@ -30,20 +26,18 @@ func statusCmd() *cobra.Command {
 	return cmd
 }
 
-func doStatus(cmd *cobra.Command, addr sdk.Address) error {
+func doStatus(cmd *cobra.Command, addr string) error {
 	cctx, err := sdkclient.GetClientTxContext(cmd)
 	if err != nil {
 		return err
 	}
 
-	ctx := cmd.Context()
-
-	cl, err := aclient.DiscoverQueryClient(ctx, cctx)
+	cl := spheron.NewClient("http://localhost:8088")
 	if err != nil {
 		return err
 	}
 
-	gclient, err := gwrest.NewClient(cl, addr, nil)
+	gclient, err := gwrest.NewClient(*cl, addr, nil)
 	if err != nil {
 		return err
 	}

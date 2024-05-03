@@ -8,8 +8,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
-
 	ctypes "github.com/akash-network/akash-api/go/node/cert/v1beta3"
 )
 
@@ -33,10 +31,7 @@ func NewServerTLSConfig(ctx context.Context, certs []tls.Certificate, cquery cty
 				}
 
 				// validation
-				var owner sdk.Address
-				if owner, err = sdk.AccAddressFromBech32(cert.Subject.CommonName); err != nil {
-					return errors.Wrap(err, "tls: invalid certificate's subject common name")
-				}
+				var owner = cert.Subject.CommonName
 
 				// 1. CommonName in issuer and Subject must match and be as Bech32 format
 				if cert.Subject.CommonName != cert.Issuer.CommonName {
@@ -54,7 +49,7 @@ func NewServerTLSConfig(ctx context.Context, certs []tls.Certificate, cquery cty
 					ctx,
 					&ctypes.QueryCertificatesRequest{
 						Filter: ctypes.CertificateFilter{
-							Owner:  owner.String(),
+							Owner:  owner,
 							Serial: cert.SerialNumber.String(),
 							State:  "valid",
 						},

@@ -158,13 +158,7 @@ func NewManifest(ns string, lid mtypes.LeaseID, mgroup *mani.Group, settings Clu
 
 // Deployment returns the cluster.Deployment that the saved manifest represents.
 func (m *Manifest) Deployment() (ctypes.IDeployment, error) {
-	//ILIJA FIX 1
-	// lid, err := m.Spec.LeaseID.FromCRD()
-	// if err != nil {
-	// 	return nil, err
-	// }
-	//ILIJA FIX 2
-
+	// TODO(spheron): check why it uses to have lid, err := m.Spec.LeaseID.FromCRD()
 	dseq, err := strconv.ParseUint(m.Spec.LeaseID.DSeq, 10, 64)
 	if err != nil {
 		return nil, err

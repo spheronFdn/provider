@@ -11,8 +11,8 @@ import (
 	dcli "github.com/akash-network/node/x/deployment/client/cli"
 	mcli "github.com/akash-network/node/x/market/client/cli"
 
-	aclient "github.com/akash-network/provider/client"
 	gwrest "github.com/akash-network/provider/gateway/rest"
+	"github.com/akash-network/provider/spheron"
 )
 
 func leaseStatusCmd() *cobra.Command {
@@ -36,10 +36,7 @@ func doLeaseStatus(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-
-	ctx := cmd.Context()
-
-	cl, err := aclient.DiscoverQueryClient(ctx, cctx)
+	cl := spheron.NewClient("http://localhost:8088")
 	if err != nil {
 		return err
 	}
@@ -59,7 +56,7 @@ func doLeaseStatus(cmd *cobra.Command) error {
 		return markRPCServerError(err)
 	}
 
-	gclient, err := gwrest.NewClient(cl, prov, []tls.Certificate{cert})
+	gclient, err := gwrest.NewClient(*cl, prov, []tls.Certificate{cert})
 	if err != nil {
 		return err
 	}

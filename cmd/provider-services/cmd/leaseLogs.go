@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -15,8 +14,8 @@ import (
 	cmdcommon "github.com/akash-network/node/cmd/common"
 	cutils "github.com/akash-network/node/x/cert/utils"
 
-	aclient "github.com/akash-network/provider/client"
 	gwrest "github.com/akash-network/provider/gateway/rest"
+	"github.com/akash-network/provider/spheron"
 )
 
 func leaseLogsCmd() *cobra.Command {
@@ -47,7 +46,7 @@ func doLeaseLogs(cmd *cobra.Command) error {
 
 	ctx := cmd.Context()
 
-	cl, err := aclient.DiscoverQueryClient(ctx, cctx)
+	cl := spheron.NewClient("http://localhost:8088")
 	if err != nil {
 		return err
 	}
@@ -62,7 +61,7 @@ func doLeaseLogs(cmd *cobra.Command) error {
 		return err
 	}
 
-	leases, err := leasesForDeployment(cmd.Context(), cl, cmd.Flags(), dtypes.DeploymentID{
+	leases, err := leasesForDeployment(cmd.Context(), *cl, cmd.Flags(), dtypes.DeploymentID{
 		Owner: cctx.GetFromAddress().String(),
 		DSeq:  dseq,
 	})
@@ -108,8 +107,7 @@ func doLeaseLogs(cmd *cobra.Command) error {
 
 	for _, lid := range leases {
 		stream := result{lid: lid}
-		prov, _ := sdk.AccAddressFromBech32(lid.Provider)
-		gclient, err := gwrest.NewClient(cl, prov, []tls.Certificate{cert})
+		gclient, err := gwrest.NewClient(*cl, lid.Provider, []tls.Certificate{cert})
 		if err == nil {
 			stream.stream, stream.error = gclient.LeaseLogs(ctx, lid, svcs, follow, tailLines)
 		} else {
