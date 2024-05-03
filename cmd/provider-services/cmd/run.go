@@ -99,6 +99,7 @@ const (
 	FlagBidPriceIPScale                  = "bid-price-ip-scale"
 	FlagEnableIPOperator                 = "ip-operator"
 	FlagTxBroadcastTimeout               = "tx-broadcast-timeout"
+	FlagHome                             = "home"
 )
 
 const (
@@ -394,6 +395,11 @@ func RunCmd() *cobra.Command {
 		panic(err)
 	}
 
+	cmd.Flags().String(FlagHome, "", "location where certificate is located")
+	if err := viper.BindPFlag(FlagHome, cmd.Flags().Lookup(FlagHome)); err != nil {
+		panic(err)
+	}
+
 	if err := providerflags.AddServiceEndpointFlag(cmd, serviceHostnameOperator); err != nil {
 		panic(err)
 	}
@@ -544,7 +550,9 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		certFromFlag = bytes.NewBufferString(val)
 	}
 
-	_, tlsCert, err := spheronClient.ReadX509KeyPair(certFromFlag)
+	homeDirectory := cmd.Flag(FlagHome).Value.String()
+
+	_, tlsCert, err := spheronClient.ReadX509KeyPair(homeDirectory, certFromFlag)
 	if err != nil {
 		return err
 	}

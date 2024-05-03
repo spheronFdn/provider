@@ -8,12 +8,13 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
+	"os"
 
 	"go.step.sm/crypto/pemutil"
 )
 
-func (client *Client) ReadX509KeyPair(fin ...io.Reader) (*x509.Certificate, tls.Certificate, error) {
-	certData, privKeyData, _, err := client.ReadTlsCertificate(fin...)
+func (client *Client) ReadX509KeyPair(homeDirectory string, fin ...io.Reader) (*x509.Certificate, tls.Certificate, error) {
+	certData, privKeyData, _, err := client.ReadTlsCertificate(homeDirectory, fin...)
 	if err != nil {
 		return nil, tls.Certificate{}, err
 	}
@@ -35,7 +36,7 @@ func (client *Client) ReadX509KeyPair(fin ...io.Reader) (*x509.Certificate, tls.
 	return x509cert, result, err
 }
 
-func (client *Client) ReadTlsCertificate(fin ...io.Reader) ([]byte, []byte, []byte, error) {
+func (client *Client) ReadTlsCertificate(homeDirectory string, fin ...io.Reader) ([]byte, []byte, []byte, error) {
 	var pemIn io.Reader
 	var closeMe io.ReadCloser
 
@@ -46,15 +47,14 @@ func (client *Client) ReadTlsCertificate(fin ...io.Reader) ([]byte, []byte, []by
 		pemIn = fin[0]
 	}
 
-	// TODO(spheron): enable reading from file
-	// if pemIn == nil {
-	// 	fopen, err := os.OpenFile(kpm.getKeyPath(), os.O_RDONLY, 0x0)
-	// 	if err != nil {
-	// 		return nil, nil, nil, fmt.Errorf("could not open certificate PEM file: %w", err)
-	// 	}
-	// 	closeMe = fopen
-	// 	pemIn = fopen
-	// }
+	if pemIn == nil {
+		fopen, err := os.OpenFile(homeDirectory+"/"+"provider"+".pem", os.O_RDONLY, 0x0)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("could not open certificate PEM file: %w", err)
+		}
+		closeMe = fopen
+		pemIn = fopen
+	}
 
 	cert, privKey, pubKey, err := client.readTlsCertificateImpl(pemIn)
 
