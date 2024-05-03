@@ -38,7 +38,7 @@ var (
 	errNoGroupForLease         = errors.New("group not found")
 	errManifestRejected        = errors.New("manifest rejected")
 
-	spheronClient = spheron.NewClient("http://localhost:8088")
+	spheronClient = spheron.NewClient()
 )
 
 func newManager(h *service, daddr dtypes.DeploymentID) *manager {

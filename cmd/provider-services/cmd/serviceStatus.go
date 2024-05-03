@@ -40,7 +40,7 @@ func doServiceStatus(cmd *cobra.Command) error {
 		return err
 	}
 
-	cl := spheron.NewClient("http://localhost:8088")
+	cl := spheron.NewClient()
 
 	if err != nil {
 		return err

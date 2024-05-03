@@ -43,10 +43,7 @@ func doLeaseEvents(cmd *cobra.Command) error {
 
 	ctx := cmd.Context()
 
-	cl := spheron.NewClient("http://localhost:8088")
-	if err != nil {
-		return err
-	}
+	cl := spheron.NewClient()
 
 	cert, err := cutils.LoadAndQueryCertificateForAccount(cmd.Context(), cctx, nil)
 	if err != nil {

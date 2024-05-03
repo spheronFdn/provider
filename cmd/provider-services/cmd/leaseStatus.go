@@ -36,10 +36,7 @@ func doLeaseStatus(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	cl := spheron.NewClient("http://localhost:8088")
-	if err != nil {
-		return err
-	}
+	cl := spheron.NewClient()
 
 	prov, err := providerFromFlags(cmd.Flags())
 	if err != nil {

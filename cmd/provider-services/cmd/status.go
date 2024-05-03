@@ -32,10 +32,7 @@ func doStatus(cmd *cobra.Command, addr string) error {
 		return err
 	}
 
-	cl := spheron.NewClient("http://localhost:8088")
-	if err != nil {
-		return err
-	}
+	cl := spheron.NewClient()
 
 	gclient, err := gwrest.NewClient(*cl, addr, nil)
 	if err != nil {

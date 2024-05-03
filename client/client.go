@@ -11,5 +11,5 @@ var (
 )
 
 func DiscoverClient() *spheron.Client {
-	return spheron.NewClient("http://localhost:8088")
+	return spheron.NewClient()
 }

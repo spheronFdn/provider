@@ -19,8 +19,8 @@ type Client struct {
 }
 
 // NewClient creates a new HelperClient with the specified base URL.
-func NewClient(baseURL string) *Client {
-	return &Client{BaseURL: baseURL}
+func NewClient() *Client {
+	return &Client{BaseURL: "http://localhost:8088"}
 }
 
 func (client *Client) SendRequest(ctx context.Context, endpoint string) ([]byte, error) {

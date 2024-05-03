@@ -36,7 +36,7 @@ var (
 		Name: "provider_deployment_monitor_health",
 	}, []string{"state"})
 
-	spheronClient = spheron.NewClient("http://localhost:8088")
+	spheronClient = spheron.NewClient()
 )
 
 type deploymentMonitor struct {

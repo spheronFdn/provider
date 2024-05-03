@@ -77,7 +77,7 @@ var (
 		Help: "",
 	}, []string{"result"})
 
-	spheronClient = spheron.NewClient("http://localhost:8088")
+	spheronClient = spheron.NewClient()
 )
 
 func newOrder(svc *service, oid mtypes.OrderID, cfg Config, pass ProviderAttrSignatureService, checkForExistingBid bool) (*order, error) {

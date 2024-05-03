@@ -27,7 +27,7 @@ func migrateEndpoints(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cl := spheron.NewClient("http://localhost:8088")
+	cl := spheron.NewClient()
 
 	prov, err := providerFromFlags(cmd.Flags())
 	if err != nil {

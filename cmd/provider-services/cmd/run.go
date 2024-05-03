@@ -520,7 +520,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 	rpcQueryTimeout := viper.GetDuration(FlagRPCQueryTimeout)
 	enableIPOperator := viper.GetBool(FlagEnableIPOperator)
 
-	spheronClient := spheron.NewClient("http://localhost:8088")
+	spheronClient := spheron.NewClient()
 
 	pricing, err := createBidPricingStrategy(strategy)
 	if err != nil {

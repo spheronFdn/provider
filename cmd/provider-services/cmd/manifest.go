@@ -52,7 +52,7 @@ func doSendManifest(cmd *cobra.Command, sdlpath string) error {
 	if err != nil {
 		return err
 	}
-	cl := spheron.NewClient("http://localhost:8088")
+	cl := spheron.NewClient()
 
 	submitFailed := false
 
