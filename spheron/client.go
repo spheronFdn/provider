@@ -3,15 +3,23 @@ package spheron
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	"github.com/akash-network/akash-api/go/node/market/v1beta4"
 	"google.golang.org/grpc"
 )
+
+type AuthJson struct {
+	PubKey          string `json:"pub_key"`
+	Timestamp       uint64 `json:"timestamp"`
+	SignedTimestamp string `json:"signed_timestamp"`
+}
 
 // Client defines the structure for our client to interact with the API.
 type Client struct {
@@ -168,6 +176,34 @@ func (client *Client) GetOrders(ctx context.Context, provider string) (*v1beta4.
 	}
 
 	return &response, nil
+}
+
+func SignMessage(ctx context.Context, msg string) (interface{}, error) {
+	// TODO(spheron): add signature with wallet
+	signedMessage := msg
+	return signedMessage, nil
+}
+
+func CreateAuthorizationToken(ctx context.Context) (string, error) {
+	ts := time.Now().Unix()
+	tsStr := fmt.Sprintf("%v", ts)
+	publicKey := "owner" // TODO(spheron) -> extract this data properly
+	signedTimestamp, err := SignMessage(ctx, tsStr)
+	if err != nil {
+		return "", err
+	}
+	body := AuthJson{
+		Timestamp:       uint64(ts),
+		PubKey:          publicKey,
+		SignedTimestamp: signedTimestamp.(string),
+	}
+	// Convert authToken to a base64-encoded string
+	authTokenBytes, err := json.Marshal(body)
+	if err != nil {
+		return "", fmt.Errorf("unable to marshal auth token: %v", err.Error())
+	}
+	res := base64.StdEncoding.EncodeToString(authTokenBytes)
+	return res, nil
 }
 
 func (client *Client) Leases(ctx context.Context, in *v1beta4.QueryLeasesRequest, opts ...grpc.CallOption) (*v1beta4.QueryLeasesResponse, error) {

@@ -1,13 +1,12 @@
 package cmd
 
 import (
-	"crypto/tls"
+	"context"
 
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/spf13/cobra"
 
 	cmdcommon "github.com/akash-network/node/cmd/common"
-	cutils "github.com/akash-network/node/x/cert/utils"
 	dcli "github.com/akash-network/node/x/deployment/client/cli"
 	mcli "github.com/akash-network/node/x/market/client/cli"
 
@@ -48,12 +47,16 @@ func doLeaseStatus(cmd *cobra.Command) error {
 		return err
 	}
 
-	cert, err := cutils.LoadAndQueryCertificateForAccount(cmd.Context(), cctx, nil)
 	if err != nil {
 		return markRPCServerError(err)
 	}
 
-	gclient, err := gwrest.NewClient(*cl, prov, []tls.Certificate{cert})
+	authToken, err := spheron.CreateAuthorizationToken(context.TODO())
+	if err != nil {
+		return err
+	}
+
+	gclient, err := gwrest.NewClient(*cl, prov, authToken)
 	if err != nil {
 		return err
 	}

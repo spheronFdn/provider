@@ -92,16 +92,16 @@ func (client *Client) readTlsCertificateImpl(fin io.Reader) ([]byte, []byte, []b
 	var privKeyPlaintext []byte
 	var privKeyI interface{}
 	//TODO(spheron): Replace sig with signature of wallet address (down is example how it's do it with cosmosdk)
-	// sig, _, err := cctx.Keyring.SignByAddress(fromAddress, []byte(fromAddress.String()))
-	passwordBytes := []byte("mockPassword")
+	// sig, _, err := cctx.Keyring.SignByAddress(fromAddress, []byte(fromAddress.String())), sig.passwordBytes is used after that
+	sig := []byte("mockPassword")
 
 	// PKCS#8 header defined in RFC7468 section 11
 	// nolint: gocritic
 	if block.Type == "ENCRYPTED PRIVATE KEY" {
-		privKeyPlaintext, err = pemutil.DecryptPKCS8PrivateKey(block.Bytes, passwordBytes)
+		privKeyPlaintext, err = pemutil.DecryptPKCS8PrivateKey(block.Bytes, sig)
 	} else if block.Headers["Proc-Type"] == "4,ENCRYPTED" {
 		// nolint: staticcheck
-		privKeyPlaintext, _ = x509.DecryptPEMBlock(block, passwordBytes)
+		privKeyPlaintext, _ = x509.DecryptPEMBlock(block, sig)
 
 		// DecryptPEMBlock may not return IncorrectPasswordError.
 		// Try parse private key instead and if it fails give another try with legacy password

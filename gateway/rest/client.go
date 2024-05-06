@@ -74,7 +74,7 @@ type ServiceLogs struct {
 }
 
 // NewClient returns a new Client
-func NewClient(spheronClient spheron.Client, addr string, certs []tls.Certificate) (Client, error) {
+func NewClient(spheronClient spheron.Client, addr string, authToken string) (Client, error) {
 	// addres will be provider address so you need to check provider details and set client with provider uri*
 	// TODO(spheron): query the chain for provider details and return the client.
 	uri, err := url.Parse("https://localhost:8443")
@@ -82,10 +82,10 @@ func NewClient(spheronClient spheron.Client, addr string, certs []tls.Certificat
 		return nil, err
 	}
 
-	return newClient(spheronClient, addr, uri), nil
+	return newClient(spheronClient, addr, uri, authToken), nil
 }
 
-func newClient(spheronClient spheron.Client, addr string, uri *url.URL) *client {
+func newClient(spheronClient spheron.Client, addr string, uri *url.URL, authToken string) *client {
 	cl := &client{
 		host:          uri,
 		addr:          addr,
@@ -94,8 +94,7 @@ func newClient(spheronClient spheron.Client, addr string, uri *url.URL) *client 
 
 	tlsConfig := &tls.Config{
 		// must use Hostname rather than Host field as certificate is issued for host without port
-		ServerName: uri.Hostname(),
-		// Certificates:          certs,
+		ServerName:            uri.Hostname(),
 		InsecureSkipVerify:    true, // nolint: gosec
 		VerifyPeerCertificate: cl.verifyPeerCertificate,
 		MinVersion:            tls.VersionTLS13,
@@ -183,46 +182,7 @@ func (c *client) verifyPeerCertificate(certificates [][]byte, _ [][]*x509.Certif
 		return errors.Wrap(err, "tls: failed to parse certificate")
 	}
 
-	// TODO(spheron): return validation back here !
-
-	// validation
-	// var prov sdk.Address
-	// if prov, err = sdk.AccAddressFromBech32(cert.Subject.CommonName); err != nil {
-	// 	return errors.Wrap(err, "tls: invalid certificate's subject common name")
-	// }
-
-	// 1. CommonName in issuer and Subject must be the same
-	// if cert.Subject.CommonName != cert.Issuer.CommonName {
-	// 	return errors.Wrap(err, "tls: invalid certificate's issuer common name")
-	// }
-
-	// if !c.addr.Equals(prov) {
-	// 	return errors.Errorf("tls: hijacked certificate")
-	// }
-
-	// 2. serial number must be in
-	// if cert.SerialNumber == nil {
-	// 	return errors.Wrap(err, "tls: invalid certificate serial number")
-	// }
-
-	// 3. look up certificate on chain. it must not be revoked
-	// var resp *ctypes.QueryCertificatesResponse
-	// resp, err = c.cclient.Certificates(
-	// 	context.Background(),
-	// 	&ctypes.QueryCertificatesRequest{
-	// 		Filter: ctypes.CertificateFilter{
-	// 			Owner:  prov.String(),
-	// 			Serial: cert.SerialNumber.String(),
-	// 			State:  "valid",
-	// 		},
-	// 	},
-	// )
-	// if err != nil {
-	// 	return errors.Wrap(err, "tls: unable to fetch certificate from chain")
-	// }
-	// if (len(resp.Certificates) != 1) || !resp.Certificates[0].Certificate.IsState(ctypes.CertificateValid) {
-	// 	return errors.New("tls: attempt to use non-existing or revoked certificate")
-	// }
+	// TODO(spheron): return validation back here maybe ?
 
 	certPool := x509.NewCertPool()
 	certPool.AddCert(cert)

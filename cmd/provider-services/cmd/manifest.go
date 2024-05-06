@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -58,7 +59,11 @@ func doSendManifest(cmd *cobra.Command, sdlpath string) error {
 
 	// TODO(spheron) extract provider address from chain for lease via dseq
 	// TODO(spheron) take tls.Certificate when instanciating newClient (gclient, err := gwrest.NewClient(cl, prov, []tls.Certificate{cert}))
-	gclient, err := gwrest.NewClient(*cl, "provider", nil)
+	authToken, err := spheron.CreateAuthorizationToken(context.TODO())
+	if err != nil {
+		return err
+	}
+	gclient, err := gwrest.NewClient(*cl, "provider", authToken)
 	if err != nil {
 		return err
 	}

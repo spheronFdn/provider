@@ -422,7 +422,6 @@ loop:
 			})
 
 		case result := <-bidch:
-			fmt.Printf("STANIS BID CHANNEL RESULT %+v\n", result)
 			bidch = nil
 			if result.Error() != nil {
 				bidCounter.WithLabelValues(metricsutils.OpenLabel, metricsutils.FailLabel).Inc()

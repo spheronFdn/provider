@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"crypto/tls"
 	"fmt"
 	"sync"
 
@@ -12,7 +11,6 @@ import (
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
 	cmdcommon "github.com/akash-network/node/cmd/common"
-	cutils "github.com/akash-network/node/x/cert/utils"
 
 	gwrest "github.com/akash-network/provider/gateway/rest"
 	"github.com/akash-network/provider/spheron"
@@ -48,7 +46,6 @@ func doLeaseLogs(cmd *cobra.Command) error {
 
 	cl := spheron.NewClient()
 
-	cert, err := cutils.LoadAndQueryCertificateForAccount(cmd.Context(), cctx, nil)
 	if err != nil {
 		return markRPCServerError(err)
 	}
@@ -101,10 +98,13 @@ func doLeaseLogs(cmd *cobra.Command) error {
 	}
 
 	streams := make([]result, 0, len(leases))
-
 	for _, lid := range leases {
 		stream := result{lid: lid}
-		gclient, err := gwrest.NewClient(*cl, lid.Provider, []tls.Certificate{cert})
+		authToken, err := spheron.CreateAuthorizationToken(ctx)
+		if err != nil {
+			return err
+		}
+		gclient, err := gwrest.NewClient(*cl, lid.Provider, authToken)
 		if err == nil {
 			stream.stream, stream.error = gclient.LeaseLogs(ctx, lid, svcs, follow, tailLines)
 		} else {

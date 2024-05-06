@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"crypto/tls"
 	"sync"
 
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
@@ -10,7 +9,6 @@ import (
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
 	cmdcommon "github.com/akash-network/node/cmd/common"
-	cutils "github.com/akash-network/node/x/cert/utils"
 
 	cltypes "github.com/akash-network/provider/cluster/types/v1beta3"
 	gwrest "github.com/akash-network/provider/gateway/rest"
@@ -45,11 +43,6 @@ func doLeaseEvents(cmd *cobra.Command) error {
 
 	cl := spheron.NewClient()
 
-	cert, err := cutils.LoadAndQueryCertificateForAccount(cmd.Context(), cctx, nil)
-	if err != nil {
-		return markRPCServerError(err)
-	}
-
 	dseq, err := dseqFromFlags(cmd.Flags())
 	if err != nil {
 		return err
@@ -81,9 +74,13 @@ func doLeaseEvents(cmd *cobra.Command) error {
 
 	streams := make([]result, 0, len(leases))
 
+	authToken, err := spheron.CreateAuthorizationToken(ctx)
+	if err != nil {
+		return err
+	}
 	for _, lid := range leases {
 		stream := result{lid: lid}
-		gclient, err := gwrest.NewClient(*cl, lid.Provider, []tls.Certificate{cert})
+		gclient, err := gwrest.NewClient(*cl, lid.Provider, authToken)
 		if err == nil {
 			stream.stream, stream.error = gclient.LeaseEvents(ctx, lid, svcs, follow)
 		} else {

@@ -552,12 +552,22 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	homeDirectory := cmd.Flag(FlagHome).Value.String()
 
-	_, tlsCert, err := spheronClient.ReadX509KeyPair(homeDirectory, certFromFlag)
+	kpm, err := spheron.NewKeyPairManager("provider", homeDirectory)
+	if err != nil {
+		return err
+	}
+	startTime := time.Now().Truncate(time.Second)
+	validDuration := 24 * time.Hour
+	endTime := startTime.Add(validDuration)
+	domains := []string{"localhost"}
+
+	kpm.Generate(startTime, endTime, domains)
+	_, tlsCert, err := kpm.ReadX509KeyPair(certFromFlag)
 	if err != nil {
 		return err
 	}
 
-	// TODO(spheron): Check if we need to publish the sertificate on our chain ? Or we can generate new one always
+	// TODO(spheron): Check if we need to publish the certificate on our chain ? Or we can generate new one always
 	// Check that the certificate exists on chain and is not revoked
 	// cresp, err := cl.Query().Certificates(cmd.Context(), &ctypes.QueryCertificatesRequest{
 	// 	Filter: ctypes.CertificateFilter{
@@ -721,6 +731,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		gwaddr,
 		"provider",
 		[]tls.Certificate{tlsCert},
+		*spheronClient,
 		clusterSettings,
 	)
 	if err != nil {

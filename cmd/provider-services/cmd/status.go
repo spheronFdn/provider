@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"context"
+
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/spf13/cobra"
 
@@ -34,7 +36,12 @@ func doStatus(cmd *cobra.Command, addr string) error {
 
 	cl := spheron.NewClient()
 
-	gclient, err := gwrest.NewClient(*cl, addr, nil)
+	authToken, err := spheron.CreateAuthorizationToken(context.TODO())
+	if err != nil {
+		return err
+	}
+
+	gclient, err := gwrest.NewClient(*cl, addr, authToken)
 	if err != nil {
 		return err
 	}

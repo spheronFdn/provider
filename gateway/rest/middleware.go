@@ -1,6 +1,8 @@
 package rest
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -12,6 +14,7 @@ import (
 
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
+	"github.com/akash-network/provider/spheron"
 )
 
 type contextKey int
@@ -63,23 +66,32 @@ func requireOwner() mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// TODO(spheron) : Use our custom authorization
-			// if r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
-			// 	http.Error(w, "", http.StatusUnauthorized)
-			// 	return
-			// }
+			// Extract and decode the authorization header
+			authHeader := r.Header.Get("Auth-Spheron")
+			if authHeader == "" {
+				http.Error(w, "missing Auth-Spheron header", http.StatusUnauthorized)
+				return
+			}
 
-			// // at this point client certificate has been validated
-			// // so only thing left to do is get account id stored in the CommonName
-			// owner, err := sdk.AccAddressFromBech32(r.TLS.PeerCertificates[0].Subject.CommonName)
+			authHeaderDecoded, err := base64.StdEncoding.DecodeString(authHeader)
+			if err != nil {
+				http.Error(w, "invalid Auth-Spheron header", http.StatusBadRequest)
+				return
+			}
 
-			// fmt.Printf("requireOwner %+v\n", owner)
+			// Unmarshal the decoded string into the AuthJson struct
+			var authData spheron.AuthJson
+			if err := json.Unmarshal(authHeaderDecoded, &authData); err != nil {
+				http.Error(w, "invalid JSON format", http.StatusBadRequest)
+				return
+			}
 
-			// if err != nil {
-			// 	http.Error(w, err.Error(), http.StatusUnauthorized)
-			// 	return
-			// }
+			// TODO(spheron): Implement custom authorization using the `authData` values
+			// Check if timestamp is in range of -20sec:now, and if user actually signed it with private key !
+			pubKey := authData.PubKey
 
-			context.Set(r, ownerContextKey, "owner")
+			// Set the owner information into the request context
+			context.Set(r, ownerContextKey, pubKey)
 			next.ServeHTTP(w, r)
 		})
 	}
