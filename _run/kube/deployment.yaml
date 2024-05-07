@@ -3,10 +3,10 @@ version: "2.0"
 
 services:
   web:
-    image: chentex/random-logger
+    image: crccheck/hello-world
     expose:
-      - port: 80
-        as: 80
+      - port: 8000
+        as: 8000
         to:
           - global: true
     env:

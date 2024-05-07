@@ -14,11 +14,11 @@ import (
 
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	"github.com/akash-network/akash-api/go/node/market/v1beta4"
+	"google.golang.org/grpc"
 
 	"github.com/akash-network/provider/tools/fromctx"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/tendermint/tendermint/libs/log"
-	"google.golang.org/grpc"
 )
 
 type AuthJson struct {
@@ -42,14 +42,13 @@ func NewClient() *Client {
 	if err != nil {
 		logger.Error("unable to connect to spheron-devnet")
 	}
-
 	return &Client{
 		BaseURL:   "http://localhost:8088",
 		EthClient: client,
 		Logger:    logger,
 	}
-}
 
+}
 func (client *Client) SendRequest(ctx context.Context, endpoint string) ([]byte, error) {
 	url := client.BaseURL + endpoint
 	resp, err := http.Get(url)
