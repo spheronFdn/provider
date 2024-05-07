@@ -35,7 +35,7 @@ func (client *Client) SubscribeEvents() error {
 	}
 	defer subscription.Unsubscribe()
 
-	fmt.Println("Listening for requests")
+	client.Logger.Debug("Listening for requests")
 
 	// Launch a go routine and start listing to events
 	go func() {
@@ -44,7 +44,7 @@ func (client *Client) SubscribeEvents() error {
 			case event := <-eventChannel:
 				client.processEvents(event)
 			case err := <-subscription.Err():
-				log.Fatal("unable to subscribe to events: ", err)
+				client.Logger.Error("unable to connect to spheron-net ", err)
 			}
 		}
 	}()
@@ -55,7 +55,7 @@ func (client *Client) processEvents(event *requestLogger.RequestLoggerRequestSto
 	fmt.Printf("Received event: %v\n", event)
 }
 
-func (client *Client) PublishEvent() string {
+func (client *Client) PublishEvent() (string, error) {
 
 	b, err := os.ReadFile("spheron/keys/wallet1.json") // where wallets
 	if err != nil {
@@ -65,17 +65,17 @@ func (client *Client) PublishEvent() string {
 	const password = "testPassword"
 	key, err := keystore.DecryptKey(b, password)
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 
 	chainId, err := client.EthClient.NetworkID(context.Background())
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 	// Create a new transactor with your private key
 	auth, err := bind.NewKeyedTransactorWithChainID(key.PrivateKey, chainId)
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 	// Define the contract address
 	contractAddress := common.HexToAddress("0xfffaf1762a1fa569f639abe1c05f38f4745c4976")
@@ -83,18 +83,18 @@ func (client *Client) PublishEvent() string {
 	// Bind the contract with the client and auth
 	instance, err := requestLogger.NewRequestLogger(contractAddress, client.EthClient)
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 
 	// Trigger the event by calling the contract function
 	tx, err := instance.StoreRequest(auth, "test request") // Pass the value for newValue
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 
 	// Print the transaction hash
 	log.Printf("Transaction sent: %s", tx.Hash().Hex())
-	return tx.Hash().Hex()
+	return tx.Hash().Hex(), nil
 }
 
 func (client *Client) CheckBalance() {

@@ -7,15 +7,17 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+
 	"io"
-	"log"
 	"net/http"
 	"time"
 
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	"github.com/akash-network/akash-api/go/node/market/v1beta4"
 
+	"github.com/akash-network/provider/tools/fromctx"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/tendermint/tendermint/libs/log"
 	"google.golang.org/grpc"
 )
 
@@ -29,18 +31,22 @@ type AuthJson struct {
 type Client struct {
 	BaseURL   string
 	EthClient *ethclient.Client
+	Logger    log.Logger
 }
 
 // NewClient creates a new HelperClient with the specified base URL.
 func NewClient() *Client {
+	logger := fromctx.LogcFromCtx(context.Background())
+
 	client, err := ethclient.DialContext(context.Background(), "wss://spheron-devnet.rpc.caldera.xyz/ws") // Use WebSocket RPC endpoint
 	if err != nil {
-		log.Fatal("unable to connect to spheron-devnet")
+		logger.Error("unable to connect to spheron-devnet")
 	}
 
 	return &Client{
 		BaseURL:   "http://localhost:8088",
 		EthClient: client,
+		Logger:    logger,
 	}
 }
 
