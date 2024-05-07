@@ -49,7 +49,8 @@ func doLeaseEvents(cmd *cobra.Command) error {
 	}
 
 	leases, err := leasesForDeployment(cmd.Context(), *cl, cmd.Flags(), dtypes.DeploymentID{
-		Owner: cctx.GetFromAddress().String(),
+		//TODO(spheron) get this value from context or env
+		Owner: "owner",
 		DSeq:  dseq,
 	})
 	if err != nil {

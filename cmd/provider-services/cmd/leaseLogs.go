@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"sync"
 
-	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
-	cmdcommon "github.com/akash-network/node/cmd/common"
 
 	gwrest "github.com/akash-network/provider/gateway/rest"
 	"github.com/akash-network/provider/spheron"
@@ -37,18 +35,10 @@ func leaseLogsCmd() *cobra.Command {
 }
 
 func doLeaseLogs(cmd *cobra.Command) error {
-	cctx, err := sdkclient.GetClientTxContext(cmd)
-	if err != nil {
-		return err
-	}
 
 	ctx := cmd.Context()
 
 	cl := spheron.NewClient()
-
-	if err != nil {
-		return markRPCServerError(err)
-	}
 
 	dseq, err := dseqFromFlags(cmd.Flags())
 	if err != nil {
@@ -56,7 +46,8 @@ func doLeaseLogs(cmd *cobra.Command) error {
 	}
 
 	leases, err := leasesForDeployment(cmd.Context(), *cl, cmd.Flags(), dtypes.DeploymentID{
-		Owner: cctx.GetFromAddress().String(),
+		//TODO(spheron) get this value from context or env
+		Owner: "owner",
 		DSeq:  dseq,
 	})
 	if err != nil {
@@ -129,7 +120,7 @@ func doLeaseLogs(cmd *cobra.Command) error {
 
 	if outputFormat == "json" {
 		printFn = func(evt logEntry) {
-			_ = cmdcommon.PrintJSON(cctx, evt)
+			_ = spheron.PrintJSON(evt)
 		}
 	}
 
