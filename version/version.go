@@ -89,26 +89,24 @@ func NewVersionCommand() *cobra.Command {
 
 // Info defines the application version information.
 type Info struct {
-	Name             string     `json:"name" yaml:"name"`
-	AppName          string     `json:"server_name" yaml:"server_name"`
-	Version          string     `json:"version" yaml:"version"`
-	GitCommit        string     `json:"commit" yaml:"commit"`
-	BuildTags        string     `json:"build_tags" yaml:"build_tags"`
-	GoVersion        string     `json:"go" yaml:"go"`
-	BuildDeps        []buildDep `json:"build_deps" yaml:"build_deps"`
-	CosmosSdkVersion string     `json:"cosmos_sdk_version" yaml:"cosmos_sdk_version"`
+	Name      string     `json:"name" yaml:"name"`
+	AppName   string     `json:"server_name" yaml:"server_name"`
+	Version   string     `json:"version" yaml:"version"`
+	GitCommit string     `json:"commit" yaml:"commit"`
+	BuildTags string     `json:"build_tags" yaml:"build_tags"`
+	GoVersion string     `json:"go" yaml:"go"`
+	BuildDeps []buildDep `json:"build_deps" yaml:"build_deps"`
 }
 
 func NewInfo() Info {
 	return Info{
-		Name:             Name,
-		AppName:          AppName,
-		Version:          Version,
-		GitCommit:        Commit,
-		BuildTags:        BuildTags,
-		GoVersion:        fmt.Sprintf("go version %s %s/%s", runtime.Version(), runtime.GOOS, runtime.GOARCH),
-		CosmosSdkVersion: getSDKVersion(),
-		BuildDeps:        depsFromBuildInfo(),
+		Name:      Name,
+		AppName:   AppName,
+		Version:   Version,
+		GitCommit: Commit,
+		BuildTags: BuildTags,
+		GoVersion: fmt.Sprintf("go version %s %s/%s", runtime.Version(), runtime.GOOS, runtime.GOARCH),
+		BuildDeps: depsFromBuildInfo(),
 	}
 }
 
@@ -148,18 +146,3 @@ func (d buildDep) String() string {
 
 func (d buildDep) MarshalJSON() ([]byte, error)      { return json.Marshal(d.String()) }
 func (d buildDep) MarshalYAML() (interface{}, error) { return d.String(), nil }
-
-func getSDKVersion() string {
-	deps, ok := debug.ReadBuildInfo()
-	if !ok {
-		return "unable to read deps"
-	}
-	var sdkVersion string
-	for _, dep := range deps.Deps {
-		if dep.Path == "github.com/cosmos/cosmos-sdk" {
-			sdkVersion = dep.Version
-		}
-	}
-
-	return sdkVersion
-}
