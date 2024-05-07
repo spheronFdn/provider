@@ -1,18 +1,17 @@
 package cmd
 
 import (
-	"crypto/tls"
+	"context"
 
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/spf13/cobra"
 
 	cmdcommon "github.com/akash-network/node/cmd/common"
-	cutils "github.com/akash-network/node/x/cert/utils"
 	dcli "github.com/akash-network/node/x/deployment/client/cli"
 	mcli "github.com/akash-network/node/x/market/client/cli"
 
-	aclient "github.com/akash-network/provider/client"
 	gwrest "github.com/akash-network/provider/gateway/rest"
+	"github.com/akash-network/provider/spheron"
 )
 
 func serviceStatusCmd() *cobra.Command {
@@ -40,9 +39,8 @@ func doServiceStatus(cmd *cobra.Command) error {
 		return err
 	}
 
-	ctx := cmd.Context()
+	cl := spheron.NewClient()
 
-	cl, err := aclient.DiscoverQueryClient(ctx, cctx)
 	if err != nil {
 		return err
 	}
@@ -62,12 +60,12 @@ func doServiceStatus(cmd *cobra.Command) error {
 		return err
 	}
 
-	cert, err := cutils.LoadAndQueryCertificateForAccount(cmd.Context(), cctx, nil)
+	authToken, err := spheron.CreateAuthorizationToken(context.TODO())
 	if err != nil {
-		return markRPCServerError(err)
+		return err
 	}
 
-	gclient, err := gwrest.NewClient(cl, prov, []tls.Certificate{cert})
+	gclient, err := gwrest.NewClient(*cl, prov, authToken)
 	if err != nil {
 		return err
 	}

@@ -1,17 +1,13 @@
 package cmd
 
 import (
-	"crypto/tls"
+	"context"
 	"errors"
 
 	"github.com/spf13/cobra"
 
-	sdkclient "github.com/cosmos/cosmos-sdk/client"
-
-	cutils "github.com/akash-network/node/x/cert/utils"
-
-	aclient "github.com/akash-network/provider/client"
 	gwrest "github.com/akash-network/provider/gateway/rest"
+	"github.com/akash-network/provider/spheron"
 )
 
 var errEmptyEndpoints = errors.New("endpoints cannot be empty")
@@ -22,29 +18,23 @@ func migrateEndpoints(cmd *cobra.Command, args []string) error {
 		return errEmptyEndpoints
 	}
 
-	cctx, err := sdkclient.GetClientTxContext(cmd)
-	if err != nil {
-		return err
-	}
-
-	ctx := cmd.Context()
-
-	cl, err := aclient.DiscoverQueryClient(ctx, cctx)
-	if err != nil {
-		return err
-	}
+	cl := spheron.NewClient()
 
 	prov, err := providerFromFlags(cmd.Flags())
 	if err != nil {
 		return err
 	}
 
-	cert, err := cutils.LoadAndQueryCertificateForAccount(cmd.Context(), cctx, nil)
 	if err != nil {
 		return markRPCServerError(err)
 	}
 
-	gclient, err := gwrest.NewClient(cl, prov, []tls.Certificate{cert})
+	authToken, err := spheron.CreateAuthorizationToken(context.TODO())
+	if err != nil {
+		return err
+	}
+
+	gclient, err := gwrest.NewClient(*cl, prov, authToken)
 	if err != nil {
 		return err
 	}

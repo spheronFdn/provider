@@ -27,7 +27,6 @@ type Config struct {
 	BlockedHostnames                []string
 	BidTimeout                      time.Duration
 	ManifestTimeout                 time.Duration
-	BalanceCheckerCfg               BalanceCheckerConfig
 	Attributes                      types.Attributes
 	DeploymentIngressStaticHosts    bool
 	DeploymentIngressDomain         string
@@ -40,10 +39,6 @@ func NewDefaultConfig() Config {
 	return Config{
 		ClusterWaitReadyDuration: time.Second * 10,
 		BidDeposit:               mtypes.DefaultBidMinDeposit,
-		BalanceCheckerCfg: BalanceCheckerConfig{
-			LeaseFundsCheckInterval: 1 * time.Minute,
-			WithdrawalPeriod:        24 * time.Hour,
-		},
-		MaxGroupVolumes: constants.DefaultMaxGroupVolumes,
+		MaxGroupVolumes:          constants.DefaultMaxGroupVolumes,
 	}
 }

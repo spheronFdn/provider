@@ -3,7 +3,6 @@ package rest
 import (
 	"bytes"
 	"context"
-	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -16,24 +15,19 @@ import (
 	"sync"
 	"time"
 
-	aclient "github.com/akash-network/akash-api/go/node/client/v1beta2"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"k8s.io/client-go/tools/remotecommand"
 
 	cosmosclient "github.com/cosmos/cosmos-sdk/client"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	manifest "github.com/akash-network/akash-api/go/manifest/v2beta2"
-	ctypes "github.com/akash-network/akash-api/go/node/cert/v1beta3"
-	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
-
-	cutils "github.com/akash-network/node/x/cert/utils"
 
 	"github.com/akash-network/provider"
 	cltypes "github.com/akash-network/provider/cluster/types/v1beta3"
+	"github.com/akash-network/provider/spheron"
 )
 
 const (
@@ -44,7 +38,6 @@ const (
 // Client defines the methods available for connecting to the gateway server.
 type Client interface {
 	Status(ctx context.Context) (*provider.Status, error)
-	Validate(ctx context.Context, gspec dtypes.GroupSpec) (provider.ValidateGroupSpecResult, error)
 	SubmitManifest(ctx context.Context, dseq uint64, mani manifest.Manifest) error
 	LeaseStatus(ctx context.Context, id mtypes.LeaseID) (LeaseStatus, error)
 	LeaseEvents(ctx context.Context, id mtypes.LeaseID, services string, follow bool) (*LeaseKubeEvents, error)
@@ -58,10 +51,6 @@ type Client interface {
 		tsq <-chan remotecommand.TerminalSize) error
 	MigrateHostnames(ctx context.Context, hostnames []string, dseq uint64, gseq uint32) error
 	MigrateEndpoints(ctx context.Context, endpoints []string, dseq uint64, gseq uint32) error
-}
-
-type JwtClient interface {
-	GetJWT(ctx context.Context) (*jwt.Token, error)
 }
 
 type LeaseKubeEvent struct {
@@ -85,58 +74,42 @@ type ServiceLogs struct {
 }
 
 // NewClient returns a new Client
-func NewClient(qclient aclient.QueryClient, addr sdk.Address, certs []tls.Certificate) (Client, error) {
-	//ILIJA FIX 1
-	// res, err := qclient.Provider(context.Background(), &ptypes.QueryProviderRequest{Owner: addr.String()})
-	// if err != nil {
-	// 	return nil, err
-	// }
-	//ILIJA FIX 2
-
+func NewClient(spheronClient spheron.Client, addr string, authToken string) (Client, error) {
+	// addres will be provider address so you need to check provider details and set client with provider uri*
+	// TODO(spheron): query the chain for provider details and return the client.
 	uri, err := url.Parse("https://localhost:8443")
 	if err != nil {
 		return nil, err
 	}
 
-	return newClient(qclient, addr, uri), nil
+	return newClient(spheronClient, addr, uri, authToken), nil
 }
 
-func NewClientILIJA(qclient aclient.QueryClient, addr sdk.Address) (Client, error) {
-	//ILIJA FIX 1
-	// res, err := qclient.Provider(context.Background(), &ptypes.QueryProviderRequest{Owner: addr.String()})
-	// if err != nil {
-	// 	return nil, err
-	// }
-	//ILIJA FIX 2
-
-	uri, err := url.Parse("http://localhost:8443")
-	if err != nil {
-		return nil, err
-	}
-
-	return newClient(qclient, addr, uri), nil
-}
-
-func newClient(qclient aclient.QueryClient, addr sdk.Address, uri *url.URL) *client {
+func newClient(spheronClient spheron.Client, addr string, uri *url.URL, authToken string) *client {
 	cl := &client{
-		host:    uri,
-		addr:    addr,
-		cclient: qclient,
+		host:          uri,
+		addr:          addr,
+		spheronClient: spheronClient,
 	}
 
 	tlsConfig := &tls.Config{
 		// must use Hostname rather than Host field as certificate is issued for host without port
-		ServerName: uri.Hostname(),
-		// Certificates:          certs,
+		ServerName:            uri.Hostname(),
 		InsecureSkipVerify:    true, // nolint: gosec
 		VerifyPeerCertificate: cl.verifyPeerCertificate,
 		MinVersion:            tls.VersionTLS13,
 	}
 
+	// Custom Transport which includes the Auth-Spheron header
+	customTransport := &http.Transport{
+		TLSClientConfig: tlsConfig,
+	}
+
 	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
-		},
+		Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			req.Header.Add("Auth-Spheron", authToken) // Set the Auth-Spheron header
+			return customTransport.RoundTrip(req)
+		}),
 		// Never  follow redirects
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
@@ -156,6 +129,12 @@ func newClient(qclient aclient.QueryClient, addr sdk.Address, uri *url.URL) *cli
 	return cl
 }
 
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
 type ClientDirectory struct {
 	cosmosContext cosmosclient.Context
 	clients       map[string]Client
@@ -164,56 +143,16 @@ type ClientDirectory struct {
 	lock sync.Mutex
 }
 
-func (cd *ClientDirectory) GetClientFromBech32(providerAddrBech32 string) (Client, error) {
-	id, err := sdk.AccAddressFromBech32(providerAddrBech32)
-	if err != nil {
-		return nil, err
-	}
-	return cd.GetClient(id)
-}
-
-func (cd *ClientDirectory) GetClient(providerAddr sdk.Address) (Client, error) {
-	cd.lock.Lock()
-	defer cd.lock.Unlock()
-
-	client, clientExists := cd.clients[providerAddr.String()]
-	if clientExists {
-		return client, nil
-	}
-
-	// client, err := NewClient(akashclient.NewQueryClientFromCtx(cd.cosmosContext), providerAddr, []tls.Certificate{cd.clientCert})
-	// if err != nil {
-	// 	return nil, err
-	// }
-	//
-	// cd.clients[providerAddr.String()] = client // Store the client
-
-	return client, nil
-}
-
-func NewClientDirectory(ctx context.Context, cctx cosmosclient.Context) (*ClientDirectory, error) {
-	cert, err := cutils.LoadAndQueryCertificateForAccount(ctx, cctx, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return &ClientDirectory{
-		cosmosContext: cctx,
-		clientCert:    cert,
-		clients:       make(map[string]Client),
-	}, nil
-}
-
 type httpClient interface {
 	Do(*http.Request) (*http.Response, error)
 }
 
 type client struct {
-	host     *url.URL
-	hclient  httpClient
-	wsclient *websocket.Dialer
-	addr     sdk.Address
-	cclient  ctypes.QueryClient
+	host          *url.URL
+	hclient       httpClient
+	wsclient      *websocket.Dialer
+	addr          string
+	spheronClient spheron.Client
 }
 
 type ClientCustomClaims struct {
@@ -231,66 +170,6 @@ type ClaimsV1 struct {
 
 var errRequiredCertSerialNum = errors.New("cert_serial_number must be present in claims")
 var errNonNumericCertSerialNum = errors.New("cert_serial_number must be numeric in claims")
-
-func (c *ClientCustomClaims) Valid() error {
-	_, err := sdk.AccAddressFromBech32(c.Subject)
-	if err != nil {
-		return err
-	}
-	_, err = sdk.AccAddressFromBech32(c.Issuer)
-	if err != nil {
-		return err
-	}
-	if c.AkashNamespace == nil || c.AkashNamespace.V1 == nil || c.AkashNamespace.V1.CertSerialNumber == "" {
-		return errRequiredCertSerialNum
-	}
-	if !sdk.IsNumeric(c.AkashNamespace.V1.CertSerialNumber) {
-		return errNonNumericCertSerialNum
-	}
-	return nil
-}
-
-func (c *client) GetJWT(ctx context.Context) (*jwt.Token, error) {
-	uri, err := makeURI(c.host, "jwt")
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := c.hclient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	responseBuf := &bytes.Buffer{}
-	_, err = io.Copy(responseBuf, resp.Body)
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if err != nil {
-		return nil, err
-	}
-
-	err = createClientResponseErrorIfNotOK(resp, responseBuf)
-	if err != nil {
-		return nil, err
-	}
-
-	token, err := jwt.ParseWithClaims(responseBuf.String(), &ClientCustomClaims{}, func(token *jwt.Token) (interface{}, error) {
-		// return the public key to be used for JWT verification
-		return resp.TLS.PeerCertificates[0].PublicKey.(*ecdsa.PublicKey), nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return token, nil
-}
 
 type ClientResponseError struct {
 	Status  int
@@ -315,46 +194,7 @@ func (c *client) verifyPeerCertificate(certificates [][]byte, _ [][]*x509.Certif
 		return errors.Wrap(err, "tls: failed to parse certificate")
 	}
 
-	// validation
-	var prov sdk.Address
-	if prov, err = sdk.AccAddressFromBech32(cert.Subject.CommonName); err != nil {
-		return errors.Wrap(err, "tls: invalid certificate's subject common name")
-	}
-
-	// 1. CommonName in issuer and Subject must be the same
-	if cert.Subject.CommonName != cert.Issuer.CommonName {
-		return errors.Wrap(err, "tls: invalid certificate's issuer common name")
-	}
-
-	//ILIJA FIX 1
-	// if !c.addr.Equals(prov) {
-	// 	return errors.Errorf("tls: hijacked certificate")
-	// }
-	//ILIJA FIX 2
-
-	// 2. serial number must be in
-	if cert.SerialNumber == nil {
-		return errors.Wrap(err, "tls: invalid certificate serial number")
-	}
-
-	// 3. look up certificate on chain. it must not be revoked
-	var resp *ctypes.QueryCertificatesResponse
-	resp, err = c.cclient.Certificates(
-		context.Background(),
-		&ctypes.QueryCertificatesRequest{
-			Filter: ctypes.CertificateFilter{
-				Owner:  prov.String(),
-				Serial: cert.SerialNumber.String(),
-				State:  "valid",
-			},
-		},
-	)
-	if err != nil {
-		return errors.Wrap(err, "tls: unable to fetch certificate from chain")
-	}
-	if (len(resp.Certificates) != 1) || !resp.Certificates[0].Certificate.IsState(ctypes.CertificateValid) {
-		return errors.New("tls: attempt to use non-existing or revoked certificate")
-	}
+	// TODO(spheron): return validation back here maybe ?
 
 	certPool := x509.NewCertPool()
 	certPool.AddCert(cert)
@@ -386,55 +226,6 @@ func (c *client) Status(ctx context.Context) (*provider.Status, error) {
 	}
 
 	return &obj, nil
-}
-
-func (c *client) Validate(ctx context.Context, gspec dtypes.GroupSpec) (provider.ValidateGroupSpecResult, error) {
-	uri, err := makeURI(c.host, validatePath())
-	if err != nil {
-		return provider.ValidateGroupSpecResult{}, err
-	}
-
-	if err = gspec.ValidateBasic(); err != nil {
-		return provider.ValidateGroupSpecResult{}, err
-	}
-
-	bgspec, err := json.Marshal(gspec)
-	if err != nil {
-		return provider.ValidateGroupSpecResult{}, err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "GET", uri, bytes.NewReader(bgspec))
-	if err != nil {
-		return provider.ValidateGroupSpecResult{}, err
-	}
-	req.Header.Set("Content-Type", contentTypeJSON)
-
-	resp, err := c.hclient.Do(req)
-	if err != nil {
-		return provider.ValidateGroupSpecResult{}, err
-	}
-
-	buf := &bytes.Buffer{}
-	_, err = io.Copy(buf, resp.Body)
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if err != nil {
-		return provider.ValidateGroupSpecResult{}, err
-	}
-
-	err = createClientResponseErrorIfNotOK(resp, buf)
-	if err != nil {
-		return provider.ValidateGroupSpecResult{}, err
-	}
-
-	var obj provider.ValidateGroupSpecResult
-	if err = json.NewDecoder(buf).Decode(&obj); err != nil {
-		return provider.ValidateGroupSpecResult{}, err
-	}
-
-	return obj, nil
 }
 
 func (c *client) SubmitManifest(ctx context.Context, dseq uint64, mani manifest.Manifest) error {

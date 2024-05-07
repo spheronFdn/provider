@@ -1,14 +1,16 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
+	"crypto/tls"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
@@ -49,6 +51,7 @@ import (
 	"github.com/akash-network/provider/operator/waiter"
 	akashclientset "github.com/akash-network/provider/pkg/client/clientset/versioned"
 	"github.com/akash-network/provider/session"
+	"github.com/akash-network/provider/spheron"
 	"github.com/akash-network/provider/tools/fromctx"
 )
 
@@ -96,6 +99,7 @@ const (
 	FlagBidPriceIPScale                  = "bid-price-ip-scale"
 	FlagEnableIPOperator                 = "ip-operator"
 	FlagTxBroadcastTimeout               = "tx-broadcast-timeout"
+	FlagHome                             = "home"
 )
 
 const (
@@ -391,6 +395,11 @@ func RunCmd() *cobra.Command {
 		panic(err)
 	}
 
+	cmd.Flags().String(FlagHome, "", "location where certificate is located")
+	if err := viper.BindPFlag(FlagHome, cmd.Flags().Lookup(FlagHome)); err != nil {
+		panic(err)
+	}
+
 	if err := providerflags.AddServiceEndpointFlag(cmd, serviceHostnameOperator); err != nil {
 		panic(err)
 	}
@@ -517,6 +526,8 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 	rpcQueryTimeout := viper.GetDuration(FlagRPCQueryTimeout)
 	enableIPOperator := viper.GetBool(FlagEnableIPOperator)
 
+	spheronClient := spheron.NewClient()
+
 	pricing, err := createBidPricingStrategy(strategy)
 	if err != nil {
 		return err
@@ -531,42 +542,32 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	group := fromctx.MustErrGroupFromCtx(ctx)
 
-	cctx, err := sdkclient.GetClientTxContext(cmd)
+	gwaddr := viper.GetString(FlagGatewayListenAddress)
+	grpcaddr := viper.GetString(FlagGatewayGRPCListenAddress)
+
+	var certFromFlag io.Reader
+	if val := cmd.Flag(FlagAuthPem).Value.String(); val != "" {
+		certFromFlag = bytes.NewBufferString(val)
+	}
+
+	homeDirectory := cmd.Flag(FlagHome).Value.String()
+
+	kpm, err := spheron.NewKeyPairManager("provider", homeDirectory)
+	if err != nil {
+		return err
+	}
+	startTime := time.Now().Truncate(time.Second)
+	validDuration := 24 * time.Hour
+	endTime := startTime.Add(validDuration)
+	domains := []string{"localhost"}
+
+	kpm.Generate(startTime, endTime, domains)
+	_, tlsCert, err := kpm.ReadX509KeyPair(certFromFlag)
 	if err != nil {
 		return err
 	}
 
-	cctx = cctx.WithSkipConfirmation(true)
-
-	// opts, err := cltypes.ClientOptionsFromFlags(cmd.Flags())
-	// if err != nil {
-	// 	return err
-	// }
-
-	// cl, err := client.DiscoverClient(ctx, cctx, opts...)
-	// if err != nil {
-	// 	return err
-	// }
-
-	gwaddr := viper.GetString(FlagGatewayListenAddress)
-	grpcaddr := viper.GetString(FlagGatewayGRPCListenAddress)
-
-	// var certFromFlag io.Reader
-	// if val := cmd.Flag(FlagAuthPem).Value.String(); val != "" {
-	// 	certFromFlag = bytes.NewBufferString(val)
-	// }
-
-	// kpm, err := cutils.NewKeyPairManager(cl.ClientContext(), cctx.FromAddress)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// _, tlsCert, err := kpm.ReadX509KeyPair(certFromFlag)
-	// if err != nil {
-	// 	return err
-	// }
-
-	//ILIJA FIX 1
+	// TODO(spheron): Check if we need to publish the certificate on our chain ? Or we can generate new one always
 	// Check that the certificate exists on chain and is not revoked
 	// cresp, err := cl.Query().Certificates(cmd.Context(), &ctypes.QueryCertificatesRequest{
 	// 	Filter: ctypes.CertificateFilter{
@@ -578,11 +579,11 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 	// if err != nil {
 	// 	return err
 	// }
-
 	// if len(cresp.Certificates) == 0 {
 	// 	return errors.Errorf("no valid found on chain certificate for account %s", cctx.FromAddress)
 	// }
 
+	// TODO(spheron): Fetch provider details from chain after provider registers !
 	// res, err := cl.Query().Provider(
 	// 	cmd.Context(),
 	// 	&ptypes.QueryProviderRequest{Owner: cctx.FromAddress.String()},
@@ -590,7 +591,6 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 	// if err != nil {
 	// 	return err
 	// }
-	//ILIJA FIX 2
 
 	pinfo := ptypes.Provider{
 		Owner:      "provider",
@@ -626,23 +626,17 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	// statusResult, err := cctx.Client.Status(cmd.Context())
-	// if err != nil {
-	// 	return err
-	// }
-	// currentBlockHeight := statusResult.SyncInfo.LatestBlockHeight
+	// TODO(spheron): Take block height from our chain !
 	currentBlockHeight := time.Now().Unix() // Add block height later
 	session := session.New(logger, &pinfo, currentBlockHeight)
 
-	// ILIJA FIX: Check if this is needed
+	// TODO(spheron): We can also call spheronClient.start() here if needed in future
 	// if err := cctx.Client.Start(); err != nil {
 	// 	return err
 	// }
 
 	bus := pubsub.NewBus()
 	defer bus.Close()
-
-	// group, ctx := errgroup.WithContext(clCtx)
 
 	// Provider service creation
 	config := provider.NewDefaultConfig()
@@ -669,11 +663,6 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		if err = config.Attributes.Validate(); err != nil {
 			return err
 		}
-	}
-
-	config.BalanceCheckerCfg = provider.BalanceCheckerConfig{
-		WithdrawalPeriod:        viper.GetDuration(FlagWithdrawalPeriod),
-		LeaseFundsCheckInterval: viper.GetDuration(FlagLeaseFundsMonitorInterval),
 	}
 
 	config.BidPricingStrategy = pricing
@@ -728,7 +717,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	operatorWaiter := waiter.NewOperatorWaiter(cmd.Context(), logger, waitClients...)
 
-	service, err := provider.NewService(ctx, cctx, cctx.FromAddress, session, bus, cclient, operatorWaiter, config)
+	service, err := provider.NewService(ctx, *spheronClient, "provider", session, bus, cclient, operatorWaiter, config)
 	if err != nil {
 		return err
 	}
@@ -739,10 +728,10 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		ctx,
 		logger,
 		service,
-		// cl.Query(),
 		gwaddr,
-		cctx.FromAddress,
-		// []tls.Certificate{tlsCert},
+		"provider",
+		[]tls.Certificate{tlsCert},
+		*spheronClient,
 		clusterSettings,
 	)
 	if err != nil {
@@ -756,7 +745,8 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	//Remove publishing of cosmos events to local bus
+	// TODO(spheron): replace with listening on our chain
+	// This is the place wher provider used to subscribe to chain events !
 	// group.Go(func() error {
 	// 	return events.Publish(ctx, cctx.Client, "provider-cli", bus)
 	// })
@@ -768,9 +758,8 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	group.Go(func() error {
 		// certificates are supplied via tls.Config
-		// return gwRest.ListenAndServeTLS("", "")
-		//ILIJA FIX
-		return gwRest.ListenAndServe()
+		return gwRest.ListenAndServeTLS("", "")
+		// return gwRest.ListenAndServe()
 	})
 
 	group.Go(func() error {

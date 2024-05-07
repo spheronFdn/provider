@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -20,12 +19,11 @@ import (
 
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 
-	cutils "github.com/akash-network/node/x/cert/utils"
 	dcli "github.com/akash-network/node/x/deployment/client/cli"
 	mcli "github.com/akash-network/node/x/market/client/cli"
 
-	aclient "github.com/akash-network/provider/client"
 	gwrest "github.com/akash-network/provider/gateway/rest"
+	"github.com/akash-network/provider/spheron"
 )
 
 const (
@@ -108,10 +106,7 @@ func doLeaseShell(cmd *cobra.Command, args []string) error {
 
 	ctx := cmd.Context()
 
-	cl, err := aclient.DiscoverQueryClient(ctx, cctx)
-	if err != nil {
-		return err
-	}
+	cl := spheron.NewClient()
 
 	prov, err := providerFromFlags(cmd.Flags())
 	if err != nil {
@@ -124,12 +119,12 @@ func doLeaseShell(cmd *cobra.Command, args []string) error {
 	}
 	lID := bidID.LeaseID()
 
-	cert, err := cutils.LoadAndQueryCertificateForAccount(ctx, cctx, nil)
+	authToken, err := spheron.CreateAuthorizationToken(context.TODO())
 	if err != nil {
-		return markRPCServerError(err)
+		return err
 	}
 
-	gclient, err := gwrest.NewClient(cl, prov, []tls.Certificate{cert})
+	gclient, err := gwrest.NewClient(*cl, prov, authToken)
 	if err != nil {
 		return err
 	}

@@ -1,17 +1,13 @@
 package cmd
 
 import (
-	"crypto/tls"
+	"context"
 	"errors"
 
 	"github.com/spf13/cobra"
 
-	sdkclient "github.com/cosmos/cosmos-sdk/client"
-
-	cutils "github.com/akash-network/node/x/cert/utils"
-
-	aclient "github.com/akash-network/provider/client"
 	gwrest "github.com/akash-network/provider/gateway/rest"
+	"github.com/akash-network/provider/spheron"
 )
 
 var errEmptyHostnames = errors.New("hostnames cannot be empty")
@@ -21,29 +17,18 @@ func migrateHostnames(cmd *cobra.Command, args []string) error {
 	if len(hostnames) == 0 {
 		return errEmptyHostnames
 	}
-	cctx, err := sdkclient.GetClientTxContext(cmd)
-	if err != nil {
-		return err
-	}
-
-	ctx := cmd.Context()
-
-	cl, err := aclient.DiscoverQueryClient(ctx, cctx)
-	if err != nil {
-		return err
-	}
+	cl := spheron.NewClient()
 
 	prov, err := providerFromFlags(cmd.Flags())
 	if err != nil {
 		return err
 	}
 
-	cert, err := cutils.LoadAndQueryCertificateForAccount(cmd.Context(), cctx, nil)
+	authToken, err := spheron.CreateAuthorizationToken(context.TODO())
 	if err != nil {
-		return markRPCServerError(err)
+		return err
 	}
-
-	gclient, err := gwrest.NewClient(cl, prov, []tls.Certificate{cert})
+	gclient, err := gwrest.NewClient(*cl, prov, authToken)
 	if err != nil {
 		return err
 	}

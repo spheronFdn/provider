@@ -14,8 +14,6 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
-
 	"github.com/akash-network/akash-api/go/grpc/gogoreflection"
 	ctypes "github.com/akash-network/akash-api/go/node/cert/v1beta3"
 	providerv1 "github.com/akash-network/akash-api/go/provider/v1"
@@ -48,17 +46,16 @@ func QueryClientFromCtx(ctx context.Context) ctypes.QueryClient {
 	return val.(ctypes.QueryClient)
 }
 
-func ContextWithOwner(ctx context.Context, address sdk.Address) context.Context {
+func ContextWithOwner(ctx context.Context, address string) context.Context {
 	return context.WithValue(ctx, ContextKeyOwner, address)
 }
 
-func OwnerFromCtx(ctx context.Context) sdk.Address {
+func OwnerFromCtx(ctx context.Context) string {
 	val := ctx.Value(ContextKeyOwner)
 	if val == nil {
-		return sdk.AccAddress{}
+		return ""
 	}
-
-	return val.(sdk.Address)
+	return val.(string)
 }
 
 func NewServer(ctx context.Context, endpoint string,
@@ -133,10 +130,7 @@ func mtlsInterceptor() grpc.UnaryServerInterceptor {
 					cert := certificates[0]
 
 					// validation
-					var owner sdk.Address
-					if owner, err = sdk.AccAddressFromBech32(cert.Subject.CommonName); err != nil {
-						return nil, fmt.Errorf("tls: invalid certificate's subject common name: %w", err)
-					}
+					var owner string
 
 					// 1. CommonName in issuer and Subject must match and be as Bech32 format
 					if cert.Subject.CommonName != cert.Issuer.CommonName {
@@ -154,7 +148,7 @@ func mtlsInterceptor() grpc.UnaryServerInterceptor {
 						ctx,
 						&ctypes.QueryCertificatesRequest{
 							Filter: ctypes.CertificateFilter{
-								Owner:  owner.String(),
+								Owner:  owner,
 								Serial: cert.SerialNumber.String(),
 								State:  "valid",
 							},

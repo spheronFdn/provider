@@ -318,19 +318,7 @@ func (pass *providerAttrSignatureService) fetch(ctx context.Context, auditor str
 	}
 
 	pass.session.Log().Info("fetching provider auditor attributes", "auditor", req.Auditor, "provider", req.Owner)
-	//ILIJA FIX 1
-	// result, err := pass.session.Client().Query().ProviderAuditorAttributes(ctx, req)
-	// if err != nil {
-	// 	// Error type is always "errors.fundamental" so use pattern matching here
-	// 	if invalidProviderPattern.MatchString(err.Error()) {
-	// 		return auditedAttrResult{auditor: auditor} // No data
-	// 	}
-	// 	return auditedAttrResult{auditor: auditor, err: err}
-	// }
-	//ILIJA FIX 2
-
-	// value := result.GetProviders()
-
+	// TODO(spheron): fetch provider attributes from chain
 	value := []atypes.Provider{
 		{
 			Owner: "provider",
@@ -422,30 +410,7 @@ func (pass *providerAttrSignatureService) tryFetchAttributes(ctx context.Context
 	select {
 	case pass.fetchInProgress <- struct{}{}:
 		go func() {
-			//ILIJA FIX MORA SE ISPARAVI
-			// var err error
-			// defer func() {
-			// 	<-pass.fetchInProgress
-			// 	if err != nil {
-			// 		pass.errFetchAttr <- err
-			// 	}
-			// }()
-
-			// var result *ptypes.QueryProviderResponse
-
-			// req := &ptypes.QueryProviderRequest{
-			// 	Owner: pass.providerAddr,
-			// }
-
-			// result, err = pass.session.Client().Query().Provider(ctx, req)
-			// if err != nil {
-			// 	pass.session.Log().Error("fetching provider attributes", "provider", req.Owner)
-			// 	return
-			// }
-			// pass.session.Log().Info("fetched provider attributes", "provider", req.Owner)
-
-			// pass.newAttr <- result.Provider.Attributes
-
+			// TODO(spheron): fetch attributes from chain
 			pass.newAttr <- pass.attr
 		}()
 	default:

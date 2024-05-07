@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/spf13/cobra"
 
 	"github.com/spf13/viper"
@@ -35,11 +34,7 @@ func Cmd() *cobra.Command {
 			ctx := cmd.Context()
 
 			opcfg := common.GetOperatorConfigFromViper()
-			_, err := sdk.AccAddressFromBech32(opcfg.ProviderAddress)
-			if err != nil {
-				return fmt.Errorf("%w: provider address must valid bech32", err)
-			}
-
+			// TODO(spheron): check if provider address in opcfg.ProviderAddress is properly set
 			client, err := clusterClient.NewClient(cmd.Context(), logger, ns)
 			if err != nil {
 				return err
