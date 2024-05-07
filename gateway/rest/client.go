@@ -100,10 +100,16 @@ func newClient(spheronClient spheron.Client, addr string, uri *url.URL, authToke
 		MinVersion:            tls.VersionTLS13,
 	}
 
+	// Custom Transport which includes the Auth-Spheron header
+	customTransport := &http.Transport{
+		TLSClientConfig: tlsConfig,
+	}
+
 	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
-		},
+		Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			req.Header.Add("Auth-Spheron", authToken) // Set the Auth-Spheron header
+			return customTransport.RoundTrip(req)
+		}),
 		// Never  follow redirects
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
@@ -121,6 +127,12 @@ func newClient(spheronClient spheron.Client, addr string, uri *url.URL, authToke
 	}
 
 	return cl
+}
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
 }
 
 type ClientDirectory struct {
