@@ -67,6 +67,7 @@ func NewRootCmd() *cobra.Command {
 
 	cmd.AddCommand(ecmd.EventCmd())
 	cmd.AddCommand(keys.Commands(app.DefaultHome))
+	cmd.AddCommand(KeysCmd(app.DefaultHome))
 	cmd.AddCommand(genutilcli.InitCmd(app.ModuleBasics(), app.DefaultHome))
 	cmd.AddCommand(genutilcli.CollectGenTxsCmd(banktypes.GenesisBalancesIterator{}, app.DefaultHome))
 	cmd.AddCommand(genutilcli.GenTxCmd(app.ModuleBasics(), encodingConfig.TxConfig, banktypes.GenesisBalancesIterator{}, app.DefaultHome))
