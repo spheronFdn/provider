@@ -35,6 +35,7 @@ func NewRootCmd() *cobra.Command {
 	cmd.AddCommand(operator.ToolsCmd())
 
 	cmd.AddCommand(version.NewVersionCommand())
+	cmd.AddCommand(KeysCmd("~/.spheron")) // TODO(spheron): Read this from a file
 
 	return cmd
 }
