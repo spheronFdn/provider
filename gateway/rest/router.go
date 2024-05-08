@@ -44,6 +44,7 @@ import (
 	cip "github.com/akash-network/provider/cluster/types/v1beta3/clients/ip"
 	clfromctx "github.com/akash-network/provider/cluster/types/v1beta3/fromctx"
 	pmanifest "github.com/akash-network/provider/manifest"
+	"github.com/akash-network/provider/spheron"
 	"github.com/akash-network/provider/tools/fromctx"
 	"github.com/akash-network/provider/version"
 )
@@ -512,12 +513,18 @@ func createDeploymentCreateHandler(log log.Logger, bus pubsub.Bus) http.HandlerF
 			_ = req.Body.Close()
 		}()
 
-		bus.Publish(mtypes.EventOrderCreated{Context: sdkutil.BaseModuleEvent{Module: "market", Action: "bid-created"}, ID: mtypes.OrderID{
+		sphCl := spheron.NewClient()
+		msg := mtypes.EventOrderCreated{Context: sdkutil.BaseModuleEvent{Module: "market", Action: "bid-created"}, ID: mtypes.OrderID{
 			Owner: "owner",
 			DSeq:  15,
 			GSeq:  1,
 			OSeq:  1,
-		}})
+		}}
+		tx, err := sphCl.GenerateTx(msg, "EventOrderCreated")
+		if err != nil {
+			return
+		}
+		sphCl.SendTx("/Users/dusanstanisavljevic/Projects/spheron/compute-provider/spheron/keys/wallet1.json", tx)
 	}
 }
 

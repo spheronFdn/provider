@@ -23,6 +23,7 @@ import (
 	"github.com/akash-network/provider/operator/waiter"
 	crd "github.com/akash-network/provider/pkg/apis/akash.network/v2beta2"
 	"github.com/akash-network/provider/session"
+	"github.com/akash-network/provider/spheron"
 	"github.com/akash-network/provider/tools/fromctx"
 	ptypes "github.com/akash-network/provider/types"
 )
@@ -44,10 +45,11 @@ var (
 )
 
 type service struct {
-	session session.Session
-	client  Client
-	bus     pubsub.Bus
-	sub     pubsub.Subscriber
+	session  session.Session
+	client   Client
+	spClient spheron.Client
+	bus      pubsub.Bus
+	sub      pubsub.Subscriber
 
 	inventory *inventoryService
 	hostnames *hostnameService
@@ -104,7 +106,7 @@ type Service interface {
 }
 
 // NewService returns new Service instance
-func NewService(ctx context.Context, session session.Session, bus pubsub.Bus, client Client, waiter waiter.OperatorWaiter, cfg Config) (Service, error) {
+func NewService(ctx context.Context, session session.Session, bus pubsub.Bus, client Client, spClient *spheron.Client, waiter waiter.OperatorWaiter, cfg Config) (Service, error) {
 	log := session.Log().With("module", "provider-cluster", "cmp", "service")
 
 	lc := lifecycle.New()
@@ -147,6 +149,7 @@ func NewService(ctx context.Context, session session.Session, bus pubsub.Bus, cl
 	s := &service{
 		session:                        session,
 		client:                         client,
+		spClient:                       spClient,
 		hostnames:                      hostnames,
 		bus:                            bus,
 		sub:                            sub,

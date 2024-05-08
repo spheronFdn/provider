@@ -100,6 +100,7 @@ const (
 	FlagEnableIPOperator                 = "ip-operator"
 	FlagTxBroadcastTimeout               = "tx-broadcast-timeout"
 	FlagHome                             = "home"
+	FlagFrom                             = "from"
 )
 
 const (
@@ -400,6 +401,11 @@ func RunCmd() *cobra.Command {
 		panic(err)
 	}
 
+	cmd.Flags().String(FlagFrom, "", "Wallet address")
+	if err := viper.BindPFlag(FlagFrom, cmd.Flags().Lookup(FlagFrom)); err != nil {
+		panic(err)
+	}
+
 	if err := providerflags.AddServiceEndpointFlag(cmd, serviceHostnameOperator); err != nil {
 		panic(err)
 	}
@@ -525,8 +531,15 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 	cachedResultMaxAge := viper.GetDuration(FlagCachedResultMaxAge)
 	rpcQueryTimeout := viper.GetDuration(FlagRPCQueryTimeout)
 	enableIPOperator := viper.GetBool(FlagEnableIPOperator)
+	homeDir := viper.GetString(FlagHome)
+	address := viper.GetString(FlagFrom)
 
-	spheronClient := spheron.NewClient()
+	spConfig := spheron.ClientConfig{
+		HomeDir: homeDir,
+		Address: address,
+	}
+
+	spClient := spheron.NewClient(spConfig)
 
 	pricing, err := createBidPricingStrategy(strategy)
 	if err != nil {
@@ -552,7 +565,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	homeDirectory := cmd.Flag(FlagHome).Value.String()
 
-	kpm, err := spheron.NewKeyPairManager("provider", homeDirectory)
+	kpm, err := spheron.NewKeyPairManager(spClient.Context.Address, homeDirectory)
 	if err != nil {
 		return err
 	}
@@ -628,7 +641,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	// TODO(spheron): Take block height from our chain !
 	currentBlockHeight := time.Now().Unix() // Add block height later
-	session := session.New(logger, &pinfo, currentBlockHeight)
+	session := session.New(logger, &pinfo, spClient, currentBlockHeight)
 
 	// TODO(spheron): We can also call spheronClient.start() here if needed in future
 	// if err := cctx.Client.Start(); err != nil {
@@ -717,7 +730,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	operatorWaiter := waiter.NewOperatorWaiter(cmd.Context(), logger, waitClients...)
 
-	service, err := provider.NewService(ctx, *spheronClient, "provider", session, bus, cclient, operatorWaiter, config)
+	service, err := provider.NewService(ctx, spClient, "provider", session, bus, cclient, operatorWaiter, config)
 	if err != nil {
 		return err
 	}
@@ -731,7 +744,6 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		gwaddr,
 		"provider",
 		[]tls.Certificate{tlsCert},
-		*spheronClient,
 		clusterSettings,
 	)
 	if err != nil {
@@ -746,7 +758,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 	}
 
 	// TODO(spheron): replace with listening on our chain
-	spheronClient.SubscribeEvents(ctx, bus)
+	spClient.SubscribeEvents(ctx, bus)
 	// This is the place wher provider used to subscribe to chain events !
 	// group.Go(func() error {
 	// return events.Publish(ctx, cctx.Client, "provider-cli", bus)

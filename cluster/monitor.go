@@ -35,14 +35,13 @@ var (
 	deploymentHealthCheckCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "provider_deployment_monitor_health",
 	}, []string{"state"})
-
-	spheronClient = spheron.NewClient()
 )
 
 type deploymentMonitor struct {
-	bus     pubsub.Bus
-	session session.Session
-	client  Client
+	bus      pubsub.Bus
+	session  session.Session
+	client   Client
+	spClient spheron.Client
 
 	deployment ctypes.IDeployment
 
@@ -58,6 +57,7 @@ func newDeploymentMonitor(dm *deploymentManager) *deploymentMonitor {
 		bus:             dm.bus,
 		session:         dm.session,
 		client:          dm.client,
+		spClient:        dm.spClient,
 		deployment:      dm.deployment,
 		log:             dm.log.With("cmp", "deployment-monitor"),
 		lc:              lifecycle.New(),
@@ -179,7 +179,7 @@ func (m *deploymentMonitor) runCloseLease(ctx context.Context) <-chan runner.Res
 			BidID: m.deployment.LeaseID().BidID(),
 		}
 		// res, err := m.session.Client().Tx().Broadcast(ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError())
-		res, err := spheronClient.CloseBid(ctx, msg)
+		res, err := m.spClient.CloseBid(ctx, msg)
 
 		if err != nil {
 			m.log.Error("closing deployment", "err", err)

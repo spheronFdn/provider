@@ -23,6 +23,7 @@ import (
 	"github.com/akash-network/provider/event"
 	"github.com/akash-network/provider/manifest"
 	"github.com/akash-network/provider/session"
+	"github.com/akash-network/provider/spheron"
 	"github.com/akash-network/provider/tools/fromctx"
 )
 
@@ -54,6 +55,7 @@ var (
 type deploymentManager struct {
 	bus                 pubsub.Bus
 	client              Client
+	spClient            spheron.Client
 	session             session.Session
 	state               deploymentState
 	deployment          ctypes.IDeployment

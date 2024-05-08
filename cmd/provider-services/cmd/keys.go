@@ -5,10 +5,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	flagHome = "home"
-)
-
 func KeysCmd(defaultNodeHome string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "keys2",
@@ -19,7 +15,7 @@ func KeysCmd(defaultNodeHome string) *cobra.Command {
 		AddKeyCommand(),
 	)
 
-	cmd.PersistentFlags().String(flagHome, defaultNodeHome, "The application home directory")
+	cmd.PersistentFlags().String(FlagHome, defaultNodeHome, "The application home directory")
 
 	return cmd
 }
@@ -35,7 +31,7 @@ func AddKeyCommand() *cobra.Command {
 }
 
 func runAddCmd(cmd *cobra.Command, args []string) error {
-	homeDir := cmd.Flag(flagHome).Value.String()
+	homeDir := cmd.Flag(FlagHome).Value.String()
 	name := args[0]
 
 	ks := keystore.NewKeyStore(homeDir, keystore.StandardScryptN, keystore.StandardScryptP)

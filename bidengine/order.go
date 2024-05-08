@@ -37,9 +37,10 @@ type order struct {
 	sub                        pubsub.Subscriber
 	reservationFulfilledNotify chan<- int
 
-	log  log.Logger
-	lc   lifecycle.Lifecycle
-	pass ProviderAttrSignatureService
+	log      log.Logger
+	lc       lifecycle.Lifecycle
+	pass     ProviderAttrSignatureService
+	spClient spheron.Client
 }
 
 var (
@@ -76,15 +77,13 @@ var (
 		Name: "provider_order_complete",
 		Help: "",
 	}, []string{"result"})
-
-	spheronClient = spheron.NewClient()
 )
 
-func newOrder(svc *service, oid mtypes.OrderID, cfg Config, pass ProviderAttrSignatureService, checkForExistingBid bool) (*order, error) {
-	return newOrderInternal(svc, oid, cfg, pass, checkForExistingBid, nil)
+func newOrder(svc *service, oid mtypes.OrderID, cfg Config, pass ProviderAttrSignatureService, checkForExistingBid bool, spClient spheron.Client) (*order, error) {
+	return newOrderInternal(svc, oid, cfg, pass, checkForExistingBid, nil, spClient)
 }
 
-func newOrderInternal(svc *service, oid mtypes.OrderID, cfg Config, pass ProviderAttrSignatureService, checkForExistingBid bool, reservationFulfilledNotify chan<- int) (*order, error) {
+func newOrderInternal(svc *service, oid mtypes.OrderID, cfg Config, pass ProviderAttrSignatureService, checkForExistingBid bool, reservationFulfilledNotify chan<- int, spClient spheron.Client) (*order, error) {
 	// Create a subscription that will see all events that have not been read from e.sub.Events()
 	sub, err := svc.sub.Clone()
 	if err != nil {
@@ -106,6 +105,7 @@ func newOrderInternal(svc *service, oid mtypes.OrderID, cfg Config, pass Provide
 		lc:                         lifecycle.New(),
 		reservationFulfilledNotify: reservationFulfilledNotify, // Normally nil in production
 		pass:                       pass,
+		spClient:                   spClient,
 	}
 
 	// Shut down when parent begins shutting down
@@ -175,14 +175,14 @@ func (o *order) run(checkForExistingBid bool) {
 	)
 
 	groupch = runner.Do(func() runner.Result {
-		res, err := spheronClient.GetGroup(ctx, o.orderID.GroupID().DSeq)
+		res, err := o.spClient.GetGroup(ctx, o.orderID.GroupID().DSeq)
 		return runner.NewResult(res, err)
 	})
 
 	// Load existing bid if needed
 	if checkForExistingBid {
 		queryBidCh = runner.Do(func() runner.Result {
-			res, err := spheronClient.GetBid(ctx, o.orderID.GroupID().DSeq)
+			res, err := o.spClient.GetBid(ctx, o.orderID.GroupID().DSeq)
 			return runner.NewResult(res, err)
 		})
 		// Hide the group details result for later
@@ -416,9 +416,13 @@ loop:
 				Deposit:        o.cfg.Deposit,
 				ResourcesOffer: offer,
 			}
+			tx, err := o.spClient.GenerateTx(msg, "EventOrderCreated")
+			if err != nil {
+				break loop
+			}
 
 			bidch = runner.Do(func() runner.Result {
-				return runner.NewResult(spheronClient.SendPostRequest(ctx, "/bid", msg))
+				return runner.NewResult(o.spClient.SendTx("/Users/dusanstanisavljevic/Projects/spheron/compute-provider/spheron/keys/wallet1.json", tx))
 			})
 
 		case result := <-bidch:
@@ -483,7 +487,7 @@ loop:
 
 			// _, err := o.session.Client().Tx().Broadcast(ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError())
 
-			_, err := spheronClient.CloseBid(ctx, msg)
+			_, err := o.spClient.CloseBid(ctx, msg)
 
 			if err != nil {
 				o.log.Error("closing bid", "err", err)

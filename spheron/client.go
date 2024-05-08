@@ -30,25 +30,37 @@ type AuthJson struct {
 // Client defines the structure for our client to interact with the API.
 type Client struct {
 	BaseURL   string
+	Context   Context
 	EthClient *ethclient.Client
 	Logger    log.Logger
 }
 
+type ClientConfig struct {
+	HomeDir string
+	Address string
+}
+
 // NewClient creates a new HelperClient with the specified base URL.
-func NewClient() *Client {
+func NewClient(config ClientConfig) *Client {
 	logger := fromctx.LogcFromCtx(context.Background())
 
 	client, err := ethclient.DialContext(context.Background(), "wss://spheron-devnet.rpc.caldera.xyz/ws") // Use WebSocket RPC endpoint
 	if err != nil {
 		logger.Error("unable to connect to spheron-devnet")
 	}
+
+	context := &Context{
+		Address: config.Address,
+		HomeDir: config.HomeDir,
+	}
 	return &Client{
 		BaseURL:   "http://localhost:8088",
+		Context:   *context,
 		EthClient: client,
 		Logger:    logger,
 	}
-
 }
+
 func (client *Client) SendRequest(ctx context.Context, endpoint string) ([]byte, error) {
 	url := client.BaseURL + endpoint
 	resp, err := http.Get(url)

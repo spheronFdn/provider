@@ -82,7 +82,7 @@ func (wd *watchdog) run() {
 
 			// return runner.NewResult(wd.sess.Client().Tx().Broadcast(wd.ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError()))
 
-			return runner.NewResult(spheronClient.CloseBid(ctx, msg))
+			return runner.NewResult(wd.sess.Client().CloseBid(ctx, msg))
 		})
 	case err = <-wd.lc.ShutdownRequest():
 	}
