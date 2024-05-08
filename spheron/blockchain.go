@@ -6,14 +6,16 @@ import (
 	"log"
 	"os"
 
+	"github.com/akash-network/node/pubsub"
 	requestLogger "github.com/akash-network/provider/spheron/gen"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/event"
 )
 
-func (client *Client) SubscribeEvents() error {
+func (client *Client) SubscribeEvents(ctx context.Context, bus pubsub.Bus) error {
 	// Define the contract address and ABI
 	contractAddress := common.HexToAddress("0xfffaf1762a1fa569f639abe1c05f38f4745c4976")
 	//contractABI := []byte(requestLogger.RequestLoggerMetaData.ABI)
@@ -23,35 +25,40 @@ func (client *Client) SubscribeEvents() error {
 	if err != nil {
 		return err
 	}
-
 	// Create a channel to receive events
-	eventChannel := make(chan *requestLogger.RequestLoggerRequestStored)
-	defer close(eventChannel)
+	txch := make(chan *requestLogger.RequestLoggerRequestStored)
 
 	// Subscribe to the event
-	subscription, err := contract.WatchRequestStored(nil, eventChannel)
+	subscription, err := contract.WatchRequestStored(nil, txch)
 	if err != nil {
 		return err
 	}
-	defer subscription.Unsubscribe()
 
 	client.Logger.Debug("Listening for requests")
 
-	// Launch a go routine and start listing to events
-	go func() {
-		for {
-			select {
-			case event := <-eventChannel:
-				client.processEvents(event)
-			case err := <-subscription.Err():
-				client.Logger.Error("unable to connect to spheron-net ", err)
-			}
-		}
-	}()
+	go client.publishEvents(ctx, subscription, txch, bus)
+
 	return nil
 }
 
-func (client *Client) processEvents(event *requestLogger.RequestLoggerRequestStored) {
+func (client *Client) publishEvents(ctx context.Context, sub event.Subscription, txchan chan *requestLogger.RequestLoggerRequestStored, bus pubsub.Bus) error {
+	var err error
+loop:
+	for {
+		select {
+		case <-ctx.Done():
+			sub.Unsubscribe()
+			close(txchan)
+			break loop
+		case ed := <-txchan:
+			client.processEvents(ed, bus)
+		}
+	}
+
+	return err
+}
+
+func (client *Client) processEvents(event *requestLogger.RequestLoggerRequestStored, bus pubsub.Bus) {
 	fmt.Printf("Received event: %v\n", event)
 }
 

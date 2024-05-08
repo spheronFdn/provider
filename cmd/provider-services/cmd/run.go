@@ -746,9 +746,10 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 	}
 
 	// TODO(spheron): replace with listening on our chain
+	spheronClient.SubscribeEvents(ctx, bus)
 	// This is the place wher provider used to subscribe to chain events !
 	// group.Go(func() error {
-	// 	return events.Publish(ctx, cctx.Client, "provider-cli", bus)
+	// return events.Publish(ctx, cctx.Client, "provider-cli", bus)
 	// })
 
 	group.Go(func() error {
