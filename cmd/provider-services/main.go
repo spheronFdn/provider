@@ -142,20 +142,6 @@ func run() error {
 	defer stop()
 
 	rootCmd := pcmd.NewRootCmd()
-
-	// return acmd.ExecuteWithCtx(ctx, rootCmd, "AP")
-
-	// Create and set a client.Context on the command's Context. During the pre-run
-	// of the root command, a default initialized client.Context is provided to
-	// seed child command execution with values such as AccountRetriver, Keyring,
-	// and a Tendermint RPC. This requires the use of a pointer reference when
-	// getting and setting the client.Context. Ideally, we utilize
-	// https://github.com/spf13/cobra/pull/1118.
-	// srvCtx := sdkserver.NewDefaultContext()
-
-	// ctx = context.WithValue(ctx, sdkclient.ClientContextKey, &sdkclient.Context{})
-	// ctx = context.WithValue(ctx, sdkserver.ServerContextKey, srvCtx)
-
 	rootCmd.PersistentFlags().String(flags.FlagLogLevel, zerolog.InfoLevel.String(), "The logging level (trace|debug|info|warn|error|fatal|panic)")
 	rootCmd.PersistentFlags().String(flags.FlagLogFormat, LogFormatPlain, "The logging format (json|plain)")
 	rootCmd.PersistentFlags().Bool(FlagLogColor, false, "Pretty logging output. Applied only when log_format=plain")
