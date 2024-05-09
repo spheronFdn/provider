@@ -1,15 +1,15 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
+
+	"github.com/akash-network/provider/spheron"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/spf13/cobra"
 )
 
-const (
-	flagHome = "home"
-)
-
-func KeysCmd(defaultNodeHome string) *cobra.Command {
+func KeysCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "keys2",
 		Short: "Manage keys for spheron-provider",
@@ -18,8 +18,6 @@ func KeysCmd(defaultNodeHome string) *cobra.Command {
 	cmd.AddCommand(
 		AddKeyCommand(),
 	)
-
-	cmd.PersistentFlags().String(flagHome, defaultNodeHome, "The application home directory")
 
 	return cmd
 }
@@ -35,15 +33,30 @@ func AddKeyCommand() *cobra.Command {
 }
 
 func runAddCmd(cmd *cobra.Command, args []string) error {
-	homeDir := cmd.Flag(flagHome).Value.String()
+	cctx, err := spheron.GetClientTxContext(cmd)
+
+	homeDir := cctx.HomeDir
 	name := args[0]
 
+	walletPath := homeDir + "/wallet.json"
+	// check if wallet already exists
+	_, err = os.Stat(walletPath)
+	if err == nil {
+		return fmt.Errorf("account already exists")
+	}
+
+	// create account if not available
 	ks := keystore.NewKeyStore(homeDir, keystore.StandardScryptN, keystore.StandardScryptP)
 	acc, err := ks.NewAccount(name)
 	if err != nil {
 		return err
 	}
 
-	cmd.Printf("account created on this path: %s, with address %s", homeDir, acc.Address.Hex())
+	err = os.Rename(acc.URL.Path, walletPath)
+	if err != nil {
+		return err
+	}
+
+	cmd.Printf("account created on this path: %s, with address %s", walletPath, acc.Address.Hex())
 	return nil
 }

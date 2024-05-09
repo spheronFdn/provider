@@ -7,18 +7,17 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	aclient "github.com/akash-network/akash-api/go/node/client/v1beta2"
-
 	gwutils "github.com/akash-network/provider/gateway/utils"
+	"github.com/akash-network/provider/spheron"
 )
 
-func NewServer(t testing.TB, qclient aclient.QueryClient, handler http.Handler, certs []tls.Certificate) *httptest.Server {
+func NewServer(t testing.TB, qclient spheron.Client, handler http.Handler, certs []tls.Certificate) *httptest.Server {
 	t.Helper()
 
 	ts := httptest.NewUnstartedServer(handler)
 
 	var err error
-	ts.TLS, err = gwutils.NewServerTLSConfig(context.Background(), certs, qclient)
+	ts.TLS, err = gwutils.NewServerTLSConfig(context.Background(), certs)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

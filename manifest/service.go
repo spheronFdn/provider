@@ -21,6 +21,7 @@ import (
 	clustertypes "github.com/akash-network/provider/cluster/types/v1beta3"
 	"github.com/akash-network/provider/event"
 	"github.com/akash-network/provider/session"
+	"github.com/akash-network/provider/spheron"
 	"github.com/akash-network/provider/tools/fromctx"
 	ptypes "github.com/akash-network/provider/types"
 )
@@ -67,7 +68,7 @@ type Service interface {
 
 // NewService creates and returns new Service instance
 // Manage incoming leases and manifests and pair the two together to construct and emit a ManifestReceived event.
-func NewService(ctx context.Context, session session.Session, bus pubsub.Bus, hostnameService clustertypes.HostnameServiceClient, cfg ServiceConfig) (Service, error) {
+func NewService(ctx context.Context, session session.Session, bus pubsub.Bus, hostnameService clustertypes.HostnameServiceClient, spClient *spheron.Client, cfg ServiceConfig) (Service, error) {
 	session = session.ForModule("provider-manifest")
 
 	sub, err := bus.Subscribe()
@@ -87,6 +88,7 @@ func NewService(ctx context.Context, session session.Session, bus pubsub.Bus, ho
 		managerch:       make(chan *manager),
 		lc:              lifecycle.New(),
 		hostnameService: hostnameService,
+		spClient:        spClient,
 		config:          cfg,
 
 		watchdogch: make(chan dtypes.DeploymentID),
@@ -115,6 +117,7 @@ type service struct {
 	managerch chan *manager
 
 	hostnameService clustertypes.HostnameServiceClient
+	spClient        *spheron.Client
 
 	watchdogs  map[dtypes.DeploymentID]*watchdog
 	watchdogch chan dtypes.DeploymentID

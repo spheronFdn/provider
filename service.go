@@ -54,7 +54,7 @@ type Service interface {
 // NewService creates and returns new Service instance
 // Simple wrapper around various services needed for running a provider.
 func NewService(ctx context.Context,
-	spheronClient spheron.Client,
+	spClient *spheron.Client,
 	accAddr string,
 	session session.Session,
 	bus pubsub.Bus,
@@ -77,13 +77,13 @@ func NewService(ctx context.Context,
 	clusterConfig.DeploymentIngressDomain = cfg.DeploymentIngressDomain
 	clusterConfig.ClusterSettings = cfg.ClusterSettings
 
-	cluster, err := cluster.NewService(ctx, session, bus, cclient, waiter, clusterConfig)
+	cluster, err := cluster.NewService(ctx, session, bus, cclient, spClient, waiter, clusterConfig)
 	if err != nil {
 		cancel()
 		return nil, err
 	}
 
-	bidengine, err := bidengine.NewService(ctx, session, cluster, bus, waiter, bidengine.Config{
+	bidengine, err := bidengine.NewService(ctx, session, spClient, cluster, bus, waiter, bidengine.Config{
 		PricingStrategy: cfg.BidPricingStrategy,
 		Deposit:         cfg.BidDeposit,
 		BidTimeout:      cfg.BidTimeout,
@@ -105,7 +105,7 @@ func NewService(ctx context.Context,
 		CachedResultMaxAge:                cfg.CachedResultMaxAge,
 	}
 
-	manifest, err := manifest.NewService(ctx, session, bus, cluster.HostnameService(), manifestConfig)
+	manifest, err := manifest.NewService(ctx, session, bus, cluster.HostnameService(), spClient, manifestConfig)
 	if err != nil {
 		session.Log().Error("creating manifest handler", "err", err)
 		cancel()

@@ -21,7 +21,6 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 
-	"github.com/cosmos/cosmos-sdk/client/flags"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	mparams "github.com/akash-network/akash-api/go/node/market/v1beta4"
@@ -100,6 +99,8 @@ const (
 	FlagEnableIPOperator                 = "ip-operator"
 	FlagTxBroadcastTimeout               = "tx-broadcast-timeout"
 	FlagHome                             = "home"
+	FlagFrom                             = "from"
+	FlagKeySecret                        = "key-secret"
 )
 
 const (
@@ -179,13 +180,6 @@ func RunCmd() *cobra.Command {
 			})
 		},
 	}
-
-	cmd.Flags().String(flags.FlagChainID, "", "The network chain ID")
-	if err := viper.BindPFlag(flags.FlagChainID, cmd.Flags().Lookup(flags.FlagChainID)); err != nil {
-		panic(err)
-	}
-
-	flags.AddTxFlagsToCmd(cmd)
 
 	cfg := provider.NewDefaultConfig()
 
@@ -400,6 +394,16 @@ func RunCmd() *cobra.Command {
 		panic(err)
 	}
 
+	cmd.Flags().String(FlagFrom, "", "Wallet address")
+	if err := viper.BindPFlag(FlagFrom, cmd.Flags().Lookup(FlagFrom)); err != nil {
+		panic(err)
+	}
+
+	cmd.Flags().String(FlagKeySecret, "", "Wallet key secret")
+	if err := viper.BindPFlag(FlagKeySecret, cmd.Flags().Lookup(FlagKeySecret)); err != nil {
+		panic(err)
+	}
+
 	if err := providerflags.AddServiceEndpointFlag(cmd, serviceHostnameOperator); err != nil {
 		panic(err)
 	}
@@ -525,8 +529,19 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 	cachedResultMaxAge := viper.GetDuration(FlagCachedResultMaxAge)
 	rpcQueryTimeout := viper.GetDuration(FlagRPCQueryTimeout)
 	enableIPOperator := viper.GetBool(FlagEnableIPOperator)
+	homeDir := viper.GetString(FlagHome)
+	key := spheron.ReadKey(viper.GetString(FlagFrom), viper.GetString(FlagKeySecret))
 
-	spheronClient := spheron.NewClient()
+	if key == nil {
+		fmt.Errorf("Wallet not provided")
+	}
+
+	spConfig := spheron.ClientConfig{
+		HomeDir: homeDir,
+		Key:     key,
+	}
+
+	spClient := spheron.NewClient(spConfig)
 
 	pricing, err := createBidPricingStrategy(strategy)
 	if err != nil {
@@ -550,9 +565,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		certFromFlag = bytes.NewBufferString(val)
 	}
 
-	homeDirectory := cmd.Flag(FlagHome).Value.String()
-
-	kpm, err := spheron.NewKeyPairManager("provider", homeDirectory)
+	kpm, err := spheron.NewKeyPairManager(spClient.Context.Key.Address.Hex(), spClient.Context.HomeDir)
 	if err != nil {
 		return err
 	}
@@ -628,7 +641,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	// TODO(spheron): Take block height from our chain !
 	currentBlockHeight := time.Now().Unix() // Add block height later
-	session := session.New(logger, &pinfo, currentBlockHeight)
+	session := session.New(logger, &pinfo, spClient, currentBlockHeight)
 
 	// TODO(spheron): We can also call spheronClient.start() here if needed in future
 	// if err := cctx.Client.Start(); err != nil {
@@ -717,7 +730,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	operatorWaiter := waiter.NewOperatorWaiter(cmd.Context(), logger, waitClients...)
 
-	service, err := provider.NewService(ctx, *spheronClient, "provider", session, bus, cclient, operatorWaiter, config)
+	service, err := provider.NewService(ctx, spClient, "provider", session, bus, cclient, operatorWaiter, config)
 	if err != nil {
 		return err
 	}
@@ -731,7 +744,6 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		gwaddr,
 		"provider",
 		[]tls.Certificate{tlsCert},
-		*spheronClient,
 		clusterSettings,
 	)
 	if err != nil {
@@ -746,9 +758,10 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 	}
 
 	// TODO(spheron): replace with listening on our chain
+	spClient.SubscribeEvents(ctx, bus)
 	// This is the place wher provider used to subscribe to chain events !
 	// group.Go(func() error {
-	// 	return events.Publish(ctx, cctx.Client, "provider-cli", bus)
+	// return events.Publish(ctx, cctx.Client, "provider-cli", bus)
 	// })
 
 	group.Go(func() error {

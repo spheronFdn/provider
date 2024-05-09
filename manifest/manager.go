@@ -37,8 +37,6 @@ var (
 	ErrNoLeaseForDeployment    = errors.New("no lease for deployment")
 	errNoGroupForLease         = errors.New("group not found")
 	errManifestRejected        = errors.New("manifest rejected")
-
-	spheronClient = spheron.NewClient()
 )
 
 func newManager(h *service, daddr dtypes.DeploymentID) *manager {
@@ -92,6 +90,7 @@ type manager struct {
 	lc  lifecycle.Lifecycle
 
 	hostnameService clustertypes.HostnameServiceClient
+	spClient        spheron.Client
 }
 
 func (m *manager) stop() {
@@ -256,11 +255,11 @@ type manifestManagerFetchDataResult struct {
 func (m *manager) doFetchData(ctx context.Context) (manifestManagerFetchDataResult, error) {
 	subctx, cancel := context.WithTimeout(ctx, m.config.RPCQueryTimeout)
 	defer cancel()
-	deploymentResponse, err := spheronClient.GetDeployment(subctx, m.daddr.DSeq)
+	deploymentResponse, err := m.spClient.GetDeployment(subctx, m.daddr.DSeq)
 	if err != nil {
 		return manifestManagerFetchDataResult{}, err
 	}
-	leasesResponse, err := spheronClient.GetLeases(subctx, m.daddr.DSeq)
+	leasesResponse, err := m.spClient.GetLeases(subctx, m.daddr.DSeq)
 	if err != nil {
 		return manifestManagerFetchDataResult{}, err
 	}

@@ -3,12 +3,7 @@ package cmd
 import (
 	"context"
 
-	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/spf13/cobra"
-
-	cmdcommon "github.com/akash-network/node/cmd/common"
-	dcli "github.com/akash-network/node/x/deployment/client/cli"
-	mcli "github.com/akash-network/node/x/market/client/cli"
 
 	gwrest "github.com/akash-network/provider/gateway/rest"
 	"github.com/akash-network/provider/spheron"
@@ -31,18 +26,18 @@ func leaseStatusCmd() *cobra.Command {
 }
 
 func doLeaseStatus(cmd *cobra.Command) error {
-	cctx, err := sdkclient.GetClientTxContext(cmd)
-	if err != nil {
-		return err
-	}
-	cl := spheron.NewClient()
+
+	cctx, err := spheron.GetClientTxContext(cmd)
+
+	cl := spheron.NewClientWithContext(cctx)
 
 	prov, err := providerFromFlags(cmd.Flags())
 	if err != nil {
 		return err
 	}
 
-	bid, err := mcli.BidIDFromFlags(cmd.Flags(), dcli.WithOwner(cctx.FromAddress))
+	//TODO(spheron) use owner provider by user or one from env
+	bid, err := spheron.BidIDFromFlags(cmd.Flags(), spheron.WithOwner(cctx.Key.Address.Hex()))
 	if err != nil {
 		return err
 	}
@@ -51,7 +46,7 @@ func doLeaseStatus(cmd *cobra.Command) error {
 		return markRPCServerError(err)
 	}
 
-	authToken, err := spheron.CreateAuthorizationToken(context.TODO())
+	authToken, err := spheron.CreateAuthorizationToken(context.TODO(), &cctx)
 	if err != nil {
 		return err
 	}
@@ -66,5 +61,5 @@ func doLeaseStatus(cmd *cobra.Command) error {
 		return showErrorToUser(err)
 	}
 
-	return cmdcommon.PrintJSON(cctx, result)
+	return spheron.PrintJSON(result)
 }

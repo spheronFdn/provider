@@ -17,11 +17,6 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/kubectl/pkg/util/term"
 
-	sdkclient "github.com/cosmos/cosmos-sdk/client"
-
-	dcli "github.com/akash-network/node/x/deployment/client/cli"
-	mcli "github.com/akash-network/node/x/market/client/cli"
-
 	gwrest "github.com/akash-network/provider/gateway/rest"
 	"github.com/akash-network/provider/spheron"
 )
@@ -99,27 +94,27 @@ func doLeaseShell(cmd *cobra.Command, args []string) error {
 		tty.Raw = true
 	}
 
-	cctx, err := sdkclient.GetClientTxContext(cmd)
+	cctx, err := spheron.GetClientTxContext(cmd)
 	if err != nil {
 		return err
 	}
 
 	ctx := cmd.Context()
 
-	cl := spheron.NewClient()
+	cl := spheron.NewClientWithContext(cctx)
 
 	prov, err := providerFromFlags(cmd.Flags())
 	if err != nil {
 		return err
 	}
 
-	bidID, err := mcli.BidIDFromFlags(cmd.Flags(), dcli.WithOwner(cctx.FromAddress))
+	bidID, err := spheron.BidIDFromFlags(cmd.Flags(), spheron.WithOwner(cctx.Key.Address.Hex()))
 	if err != nil {
 		return err
 	}
 	lID := bidID.LeaseID()
 
-	authToken, err := spheron.CreateAuthorizationToken(context.TODO())
+	authToken, err := spheron.CreateAuthorizationToken(context.TODO(), &cctx)
 	if err != nil {
 		return err
 	}

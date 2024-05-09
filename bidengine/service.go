@@ -18,6 +18,7 @@ import (
 	"github.com/akash-network/provider/cluster"
 	"github.com/akash-network/provider/operator/waiter"
 	"github.com/akash-network/provider/session"
+	"github.com/akash-network/provider/spheron"
 	"github.com/akash-network/provider/tools/fromctx"
 	ptypes "github.com/akash-network/provider/types"
 )
@@ -54,10 +55,10 @@ type Service interface {
 }
 
 // NewService creates new service instance and returns error in case of failure
-func NewService(ctx context.Context, session session.Session, cluster cluster.Cluster, bus pubsub.Bus, waiter waiter.OperatorWaiter, cfg Config) (Service, error) {
+func NewService(ctx context.Context, session session.Session, spClient *spheron.Client, cluster cluster.Cluster, bus pubsub.Bus, waiter waiter.OperatorWaiter, cfg Config) (Service, error) {
 	session = session.ForModule("bidengine-service")
 
-	existingOrders, err := queryExistingOrders(ctx, session)
+	existingOrders, err := queryExistingOrders(ctx, session, spClient)
 	if err != nil {
 		session.Log().Error("finding existing orders", "err", err)
 		return nil, err
@@ -87,6 +88,7 @@ func NewService(ctx context.Context, session session.Session, cluster cluster.Cl
 		cfg:      cfg,
 		pass:     providerAttrService,
 		waiter:   waiter,
+		spClient: spClient,
 	}
 
 	go s.lc.WatchContext(ctx)
@@ -110,7 +112,8 @@ type service struct {
 	lc   lifecycle.Lifecycle
 	pass *providerAttrSignatureService
 
-	waiter waiter.OperatorWaiter
+	waiter   waiter.OperatorWaiter
+	spClient *spheron.Client
 }
 
 func (s *service) Close() error {
@@ -171,7 +174,7 @@ func (s *service) run(ctx context.Context, existingOrders []mtypes.OrderID) {
 	for _, orderID := range existingOrders {
 		key := mquery.OrderPath(orderID)
 		s.session.Log().Debug("creating catchup order", "order", key)
-		order, err := newOrder(s, orderID, s.cfg, s.pass, true)
+		order, err := newOrder(s, orderID, s.cfg, s.pass, true, s.spClient)
 		if err != nil {
 			s.session.Log().Error("creating catchup order", "order", key, "err", err)
 			continue
@@ -216,7 +219,7 @@ loop:
 				}
 
 				// create an order object for managing the bid process and order lifecycle
-				order, err := newOrder(s, ev.ID, s.cfg, s.pass, false)
+				order, err := newOrder(s, ev.ID, s.cfg, s.pass, false, s.spClient)
 				if err != nil {
 					s.session.Log().Error("handling order", "order", key, "err", err)
 					break
@@ -257,8 +260,8 @@ loop:
 	s.session.Log().Info("shutdown complete")
 }
 
-func queryExistingOrders(ctx context.Context, session session.Session) ([]mtypes.OrderID, error) {
-	res, err := spheronClient.GetOrders(ctx, "provider")
+func queryExistingOrders(ctx context.Context, session session.Session, spClient *spheron.Client) ([]mtypes.OrderID, error) {
+	res, err := spClient.GetOrders(ctx, "provider")
 
 	if err != nil {
 		session.Log().Error("error querying open orders:", "err", err)

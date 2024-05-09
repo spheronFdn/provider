@@ -1,4 +1,5 @@
 ### Required Dependencies
+
 ```shell
 brew update
 brew upgrade

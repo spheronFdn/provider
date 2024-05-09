@@ -2,18 +2,22 @@ package spheron
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 
+	"github.com/akash-network/node/pubsub"
 	requestLogger "github.com/akash-network/provider/spheron/gen"
 
+	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/event"
 )
 
-func (client *Client) SubscribeEvents() error {
+func (client *Client) SubscribeEvents(ctx context.Context, bus pubsub.Bus) error {
 	// Define the contract address and ABI
 	contractAddress := common.HexToAddress("0xfffaf1762a1fa569f639abe1c05f38f4745c4976")
 	//contractABI := []byte(requestLogger.RequestLoggerMetaData.ABI)
@@ -23,41 +27,72 @@ func (client *Client) SubscribeEvents() error {
 	if err != nil {
 		return err
 	}
-
 	// Create a channel to receive events
-	eventChannel := make(chan *requestLogger.RequestLoggerRequestStored)
-	defer close(eventChannel)
+	txch := make(chan *requestLogger.RequestLoggerRequestStored)
 
 	// Subscribe to the event
-	subscription, err := contract.WatchRequestStored(nil, eventChannel)
+	subscription, err := contract.WatchRequestStored(nil, txch)
 	if err != nil {
 		return err
 	}
-	defer subscription.Unsubscribe()
 
 	client.Logger.Debug("Listening for requests")
 
-	// Launch a go routine and start listing to events
-	go func() {
-		for {
-			select {
-			case event := <-eventChannel:
-				client.processEvents(event)
-			case err := <-subscription.Err():
-				client.Logger.Error("unable to connect to spheron-net ", err)
-			}
-		}
-	}()
+	go client.publishEvents(ctx, subscription, txch, bus)
+
 	return nil
 }
 
-func (client *Client) processEvents(event *requestLogger.RequestLoggerRequestStored) {
-	fmt.Printf("Received event: %v\n", event)
+func (client *Client) publishEvents(ctx context.Context, sub event.Subscription, txchan chan *requestLogger.RequestLoggerRequestStored, bus pubsub.Bus) error {
+	var err error
+loop:
+	for {
+		select {
+		case <-ctx.Done():
+			sub.Unsubscribe()
+			close(txchan)
+			break loop
+		case ed := <-txchan:
+			client.processEvents(ed, bus)
+		}
+	}
+
+	return err
 }
 
-func (client *Client) PublishEvent() (string, error) {
+type EventRequestBody struct {
+	EventType string `json:"event_type"`
+	Body      string `json:"body"`
+}
 
-	b, err := os.ReadFile("spheron/keys/wallet1.json") // where wallets
+func (client *Client) processEvents(event *requestLogger.RequestLoggerRequestStored, bus pubsub.Bus) {
+	fmt.Printf("Received event: %v\n", event)
+	// TODO(spheron) -> untill we have all contracts available take event.Request as if it's a json representation of akash event
+	var internalEvent interface{}
+	jsonByte := []byte(event.Request)
+	rawEvent := &EventRequestBody{}
+	if err := json.Unmarshal(jsonByte, rawEvent); err != nil {
+		client.Logger.Error("unable to unmarshal event", err)
+		return
+	}
+
+	switch rawEvent.EventType {
+	case "EventOrderCreated":
+		e := &mtypes.EventOrderCreated{}
+		if err := json.Unmarshal([]byte(rawEvent.Body), e); err != nil {
+			return
+		}
+		internalEvent = *e
+	}
+	if err := bus.Publish(internalEvent); err != nil {
+		bus.Close()
+		return
+	}
+}
+
+func (client *Client) SendTx(pathWallet string, body *EventRequestBody) (string, error) {
+	//spheron/keys/wallet1.json
+	b, err := os.ReadFile(pathWallet)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -86,8 +121,12 @@ func (client *Client) PublishEvent() (string, error) {
 		return "", err
 	}
 
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return "", err
+	}
+	tx, err := instance.StoreRequest(auth, string(jsonBody)) // Pass the value for newValue
 	// Trigger the event by calling the contract function
-	tx, err := instance.StoreRequest(auth, "test request") // Pass the value for newValue
 	if err != nil {
 		return "", err
 	}
@@ -95,6 +134,22 @@ func (client *Client) PublishEvent() (string, error) {
 	// Print the transaction hash
 	log.Printf("Transaction sent: %s", tx.Hash().Hex())
 	return tx.Hash().Hex(), nil
+}
+
+func (clinet *Client) GenerateTx(msg interface{}, eventType string) (*EventRequestBody, error) {
+
+	msgStr, err := json.Marshal(msg)
+	if err != nil {
+		fmt.Printf("Error while marshaling tx msg")
+		return nil, err
+
+	}
+	tx := &EventRequestBody{
+		EventType: eventType,
+		Body:      string(msgStr),
+	}
+
+	return tx, nil
 }
 
 func (client *Client) CheckBalance() {

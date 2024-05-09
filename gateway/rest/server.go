@@ -12,7 +12,6 @@ import (
 	"github.com/akash-network/provider"
 	clfromctx "github.com/akash-network/provider/cluster/types/v1beta3/fromctx"
 	gwutils "github.com/akash-network/provider/gateway/utils"
-	"github.com/akash-network/provider/spheron"
 	"github.com/akash-network/provider/tools/fromctx"
 )
 
@@ -23,7 +22,6 @@ func NewServer(
 	address string,
 	pid string, // (spheron fix) used to be sdk.Address
 	certs []tls.Certificate,
-	spheronClient spheron.Client,
 	clusterConfig map[interface{}]interface{}) (*http.Server, error) {
 
 	restMiddleware := func(next http.Handler) http.Handler {
@@ -55,7 +53,7 @@ func NewServer(
 
 	var err error
 
-	srv.TLSConfig, err = gwutils.NewServerTLSConfig(context.Background(), certs, spheronClient)
+	srv.TLSConfig, err = gwutils.NewServerTLSConfig(context.Background(), certs)
 	if err != nil {
 		return nil, err
 	}

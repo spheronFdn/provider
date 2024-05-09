@@ -3,12 +3,7 @@ package cmd
 import (
 	"context"
 
-	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/spf13/cobra"
-
-	cmdcommon "github.com/akash-network/node/cmd/common"
-	dcli "github.com/akash-network/node/x/deployment/client/cli"
-	mcli "github.com/akash-network/node/x/market/client/cli"
 
 	gwrest "github.com/akash-network/provider/gateway/rest"
 	"github.com/akash-network/provider/spheron"
@@ -34,12 +29,12 @@ func serviceStatusCmd() *cobra.Command {
 }
 
 func doServiceStatus(cmd *cobra.Command) error {
-	cctx, err := sdkclient.GetClientTxContext(cmd)
+	cctx, err := spheron.GetClientTxContext(cmd)
 	if err != nil {
 		return err
 	}
 
-	cl := spheron.NewClient()
+	cl := spheron.NewClientWithContext(cctx)
 
 	if err != nil {
 		return err
@@ -55,12 +50,12 @@ func doServiceStatus(cmd *cobra.Command) error {
 		return err
 	}
 
-	bid, err := mcli.BidIDFromFlags(cmd.Flags(), dcli.WithOwner(cctx.FromAddress))
+	bid, err := spheron.BidIDFromFlags(cmd.Flags(), spheron.WithOwner(cctx.Key.Address.Hex()))
 	if err != nil {
 		return err
 	}
 
-	authToken, err := spheron.CreateAuthorizationToken(context.TODO())
+	authToken, err := spheron.CreateAuthorizationToken(context.TODO(), &cctx)
 	if err != nil {
 		return err
 	}
@@ -75,5 +70,5 @@ func doServiceStatus(cmd *cobra.Command) error {
 		return showErrorToUser(err)
 	}
 
-	return cmdcommon.PrintJSON(cctx, result)
+	return spheron.PrintJSON(result)
 }
