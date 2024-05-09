@@ -1,7 +1,7 @@
 package spheron
 
 import (
-	"errors"
+	"context"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -62,14 +62,12 @@ func GetClientContextFromCmd(cmd *cobra.Command) Context {
 	return Context{}
 }
 
-func SetCmdClientContext(cmd *cobra.Command, clientCtx Context) error {
+func SetCmdClientContext(cmd *cobra.Command, clientCtx Context) {
 	v := cmd.Context().Value(ClientContextKey)
 	if v == nil {
-		return errors.New("client context not set")
+		cmd.SetContext(context.WithValue(cmd.Context(), ClientContextKey, clientCtx))
+		return
 	}
-
 	clientCtxPtr := v.(*Context)
 	*clientCtxPtr = clientCtx
-
-	return nil
 }

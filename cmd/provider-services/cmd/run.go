@@ -21,7 +21,6 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 
-	"github.com/cosmos/cosmos-sdk/client/flags"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	mparams "github.com/akash-network/akash-api/go/node/market/v1beta4"
@@ -181,13 +180,6 @@ func RunCmd() *cobra.Command {
 			})
 		},
 	}
-
-	cmd.Flags().String(flags.FlagChainID, "", "The network chain ID")
-	if err := viper.BindPFlag(flags.FlagChainID, cmd.Flags().Lookup(flags.FlagChainID)); err != nil {
-		panic(err)
-	}
-
-	flags.AddTxFlagsToCmd(cmd)
 
 	cfg := provider.NewDefaultConfig()
 
@@ -401,7 +393,7 @@ func RunCmd() *cobra.Command {
 	if err := viper.BindPFlag(FlagHome, cmd.Flags().Lookup(FlagHome)); err != nil {
 		panic(err)
 	}
-	fmt.Printf("All flags: %v+", cmd.Flags())
+
 	cmd.Flags().String(FlagFrom, "", "Wallet address")
 	if err := viper.BindPFlag(FlagFrom, cmd.Flags().Lookup(FlagFrom)); err != nil {
 		panic(err)
@@ -540,6 +532,10 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 	homeDir := viper.GetString(FlagHome)
 	key := spheron.ReadKey(viper.GetString(FlagFrom), viper.GetString(FlagKeySecret))
 
+	if key == nil {
+		fmt.Errorf("Wallet not provided")
+	}
+
 	spConfig := spheron.ClientConfig{
 		HomeDir: homeDir,
 		Key:     key,
@@ -569,9 +565,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		certFromFlag = bytes.NewBufferString(val)
 	}
 
-	homeDirectory := cmd.Flag(FlagHome).Value.String()
-
-	kpm, err := spheron.NewKeyPairManager(spClient.Context.Key.Address.Hex(), homeDirectory)
+	kpm, err := spheron.NewKeyPairManager(spClient.Context.Key.Address.Hex(), spClient.Context.HomeDir)
 	if err != nil {
 		return err
 	}

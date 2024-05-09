@@ -49,10 +49,7 @@ func GetInitContextPreRunE() func(*cobra.Command, []string) error {
 		if err != nil {
 			return err
 		}
-		if err := spheron.SetCmdClientContext(cmd, initClientCtx); err != nil {
-			return err
-		}
-
+		spheron.SetCmdClientContext(cmd, initClientCtx)
 		return nil
 	}
 }
