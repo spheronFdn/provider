@@ -18,7 +18,12 @@ func NewRootCmd() *cobra.Command {
 		PersistentPreRunE: GetInitContextPreRunE(),
 	}
 
+	// main commands
+	cmd.AddCommand(KeysCmd())
+	cmd.AddCommand(DeploymentCmd())
 	cmd.AddCommand(SendManifestCmd())
+
+	// not main commands
 	cmd.AddCommand(statusCmd())
 	cmd.AddCommand(leaseStatusCmd())
 	cmd.AddCommand(leaseEventsCmd())
@@ -37,8 +42,6 @@ func NewRootCmd() *cobra.Command {
 	cmd.AddCommand(operator.ToolsCmd())
 
 	cmd.AddCommand(version.NewVersionCommand())
-	cmd.AddCommand(KeysCmd())
-
 	return cmd
 }
 
