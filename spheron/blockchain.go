@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/akash-network/node/pubsub"
-	requestLogger "github.com/akash-network/provider/spheron/gen"
+	"github.com/akash-network/provider/spheron/gen/requestLogger"
 
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"

@@ -14,5 +14,5 @@ brew install ethereum
 ```shell
 cd spheron
 solc --bin --abi contract/requestLogger.sol -o build
-abigen  --bin=build/RequestLogger.bin --abi=build/RequestLogger.abi --pkg=requestLogger --out=gen/todo.go
+abigen  --bin=build/RequestLogger.bin --abi=build/RequestLogger.abi --pkg=gen --out=gen/requestLogger.go
 ```
