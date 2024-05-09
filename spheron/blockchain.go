@@ -7,9 +7,11 @@ import (
 	"log"
 
 	"github.com/akash-network/node/pubsub"
+	"github.com/akash-network/provider/spheron/entities"
 	requestLogger "github.com/akash-network/provider/spheron/gen"
 
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
+	"github.com/akash-network/akash-api/go/sdkutil"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
@@ -75,12 +77,19 @@ func (client *Client) processEvents(event *requestLogger.RequestLoggerRequestSto
 	}
 
 	switch rawEvent.EventType {
-	case "EventOrderCreated":
-		e := &mtypes.EventOrderCreated{}
-		if err := json.Unmarshal([]byte(rawEvent.Body), e); err != nil {
+	case "DeploymentCreated":
+		evt := &entities.Deployment{}
+		if err := json.Unmarshal([]byte(rawEvent.Body), evt); err != nil {
 			return
 		}
-		internalEvent = *e
+		msg := mtypes.EventOrderCreated{Context: sdkutil.BaseModuleEvent{Module: "market", Action: "bid-created"},
+			ID: mtypes.OrderID{
+				Owner: evt.ID.Owner,
+				DSeq:  evt.ID.DSeq,
+				GSeq:  1,
+				OSeq:  1,
+			}}
+		internalEvent = msg
 	}
 	if err := bus.Publish(internalEvent); err != nil {
 		bus.Close()

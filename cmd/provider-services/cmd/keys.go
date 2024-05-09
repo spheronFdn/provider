@@ -29,11 +29,15 @@ func AddKeyCommand() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE:  runAddCmd,
 	}
+	cmd.Flags().String(FlagHome, "", "location of home folder")
 	return cmd
 }
 
 func runAddCmd(cmd *cobra.Command, args []string) error {
 	cctx, err := spheron.GetClientTxContext(cmd)
+	if err != nil {
+		return err
+	}
 
 	homeDir := cctx.HomeDir
 	name := args[0]

@@ -65,7 +65,7 @@ func GetClientContextFromCmd(cmd *cobra.Command) Context {
 func SetCmdClientContext(cmd *cobra.Command, clientCtx Context) {
 	v := cmd.Context().Value(ClientContextKey)
 	if v == nil {
-		cmd.SetContext(context.WithValue(cmd.Context(), ClientContextKey, clientCtx))
+		cmd.SetContext(context.WithValue(cmd.Context(), ClientContextKey, &clientCtx))
 		return
 	}
 	clientCtxPtr := v.(*Context)

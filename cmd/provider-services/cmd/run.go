@@ -389,12 +389,12 @@ func RunCmd() *cobra.Command {
 		panic(err)
 	}
 
-	cmd.Flags().String(FlagHome, "", "location where certificate is located")
+	cmd.Flags().String(FlagHome, "", "location of home folder")
 	if err := viper.BindPFlag(FlagHome, cmd.Flags().Lookup(FlagHome)); err != nil {
 		panic(err)
 	}
 
-	cmd.Flags().String(FlagFrom, "", "Wallet address")
+	cmd.Flags().String(FlagFrom, "", "Wallet path")
 	if err := viper.BindPFlag(FlagFrom, cmd.Flags().Lookup(FlagFrom)); err != nil {
 		panic(err)
 	}
