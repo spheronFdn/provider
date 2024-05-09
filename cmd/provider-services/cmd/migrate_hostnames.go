@@ -17,14 +17,15 @@ func migrateHostnames(cmd *cobra.Command, args []string) error {
 	if len(hostnames) == 0 {
 		return errEmptyHostnames
 	}
-	cl := spheron.NewClient()
+	cctx, err := spheron.GetClientTxContext(cmd)
+	cl := spheron.NewClientWithContext(cctx)
 
 	prov, err := providerFromFlags(cmd.Flags())
 	if err != nil {
 		return err
 	}
 
-	authToken, err := spheron.CreateAuthorizationToken(context.TODO())
+	authToken, err := spheron.CreateAuthorizationToken(context.TODO(), &cctx)
 	if err != nil {
 		return err
 	}

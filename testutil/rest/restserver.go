@@ -17,7 +17,7 @@ func NewServer(t testing.TB, qclient spheron.Client, handler http.Handler, certs
 	ts := httptest.NewUnstartedServer(handler)
 
 	var err error
-	ts.TLS, err = gwutils.NewServerTLSConfig(context.Background(), certs, qclient)
+	ts.TLS, err = gwutils.NewServerTLSConfig(context.Background(), certs)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

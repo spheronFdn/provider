@@ -41,7 +41,7 @@ type deploymentMonitor struct {
 	bus      pubsub.Bus
 	session  session.Session
 	client   Client
-	spClient spheron.Client
+	spClient *spheron.Client
 
 	deployment ctypes.IDeployment
 

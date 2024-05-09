@@ -101,6 +101,7 @@ const (
 	FlagTxBroadcastTimeout               = "tx-broadcast-timeout"
 	FlagHome                             = "home"
 	FlagFrom                             = "from"
+	FlagKeySecret                        = "key-secret"
 )
 
 const (
@@ -400,9 +401,14 @@ func RunCmd() *cobra.Command {
 	if err := viper.BindPFlag(FlagHome, cmd.Flags().Lookup(FlagHome)); err != nil {
 		panic(err)
 	}
-
+	fmt.Printf("All flags: %v+", cmd.Flags())
 	cmd.Flags().String(FlagFrom, "", "Wallet address")
 	if err := viper.BindPFlag(FlagFrom, cmd.Flags().Lookup(FlagFrom)); err != nil {
+		panic(err)
+	}
+
+	cmd.Flags().String(FlagKeySecret, "", "Wallet key secret")
+	if err := viper.BindPFlag(FlagKeySecret, cmd.Flags().Lookup(FlagKeySecret)); err != nil {
 		panic(err)
 	}
 
@@ -532,11 +538,11 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 	rpcQueryTimeout := viper.GetDuration(FlagRPCQueryTimeout)
 	enableIPOperator := viper.GetBool(FlagEnableIPOperator)
 	homeDir := viper.GetString(FlagHome)
-	address := viper.GetString(FlagFrom)
+	key := spheron.ReadKey(viper.GetString(FlagFrom), viper.GetString(FlagKeySecret))
 
 	spConfig := spheron.ClientConfig{
 		HomeDir: homeDir,
-		Address: address,
+		Key:     key,
 	}
 
 	spClient := spheron.NewClient(spConfig)
@@ -565,7 +571,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	homeDirectory := cmd.Flag(FlagHome).Value.String()
 
-	kpm, err := spheron.NewKeyPairManager(spClient.Context.Address, homeDirectory)
+	kpm, err := spheron.NewKeyPairManager(spClient.Context.Key.Address.Hex(), homeDirectory)
 	if err != nil {
 		return err
 	}

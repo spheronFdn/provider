@@ -40,7 +40,7 @@ type order struct {
 	log      log.Logger
 	lc       lifecycle.Lifecycle
 	pass     ProviderAttrSignatureService
-	spClient spheron.Client
+	spClient *spheron.Client
 }
 
 var (
@@ -79,11 +79,11 @@ var (
 	}, []string{"result"})
 )
 
-func newOrder(svc *service, oid mtypes.OrderID, cfg Config, pass ProviderAttrSignatureService, checkForExistingBid bool, spClient spheron.Client) (*order, error) {
+func newOrder(svc *service, oid mtypes.OrderID, cfg Config, pass ProviderAttrSignatureService, checkForExistingBid bool, spClient *spheron.Client) (*order, error) {
 	return newOrderInternal(svc, oid, cfg, pass, checkForExistingBid, nil, spClient)
 }
 
-func newOrderInternal(svc *service, oid mtypes.OrderID, cfg Config, pass ProviderAttrSignatureService, checkForExistingBid bool, reservationFulfilledNotify chan<- int, spClient spheron.Client) (*order, error) {
+func newOrderInternal(svc *service, oid mtypes.OrderID, cfg Config, pass ProviderAttrSignatureService, checkForExistingBid bool, reservationFulfilledNotify chan<- int, spClient *spheron.Client) (*order, error) {
 	// Create a subscription that will see all events that have not been read from e.sub.Events()
 	sub, err := svc.sub.Clone()
 	if err != nil {

@@ -27,7 +27,9 @@ func leaseStatusCmd() *cobra.Command {
 
 func doLeaseStatus(cmd *cobra.Command) error {
 
-	cl := spheron.NewClient()
+	cctx, err := spheron.GetClientTxContext(cmd)
+
+	cl := spheron.NewClientWithContext(cctx)
 
 	prov, err := providerFromFlags(cmd.Flags())
 	if err != nil {
@@ -35,7 +37,7 @@ func doLeaseStatus(cmd *cobra.Command) error {
 	}
 
 	//TODO(spheron) use owner provider by user or one from env
-	bid, err := spheron.BidIDFromFlags(cmd.Flags(), spheron.WithOwner("owner"))
+	bid, err := spheron.BidIDFromFlags(cmd.Flags(), spheron.WithOwner(cctx.Key.Address.Hex()))
 	if err != nil {
 		return err
 	}
@@ -44,7 +46,7 @@ func doLeaseStatus(cmd *cobra.Command) error {
 		return markRPCServerError(err)
 	}
 
-	authToken, err := spheron.CreateAuthorizationToken(context.TODO())
+	authToken, err := spheron.CreateAuthorizationToken(context.TODO(), &cctx)
 	if err != nil {
 		return err
 	}

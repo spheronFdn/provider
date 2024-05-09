@@ -3,10 +3,7 @@ package cmd
 import (
 	"context"
 
-	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/spf13/cobra"
-
-	cmdcommon "github.com/akash-network/node/cmd/common"
 
 	gwrest "github.com/akash-network/provider/gateway/rest"
 	"github.com/akash-network/provider/spheron"
@@ -29,14 +26,14 @@ func statusCmd() *cobra.Command {
 }
 
 func doStatus(cmd *cobra.Command, addr string) error {
-	cctx, err := sdkclient.GetClientTxContext(cmd)
+	cctx, err := spheron.GetClientTxContext(cmd)
 	if err != nil {
 		return err
 	}
 
-	cl := spheron.NewClient()
+	cl := spheron.NewClientWithContext(cctx)
 
-	authToken, err := spheron.CreateAuthorizationToken(context.TODO())
+	authToken, err := spheron.CreateAuthorizationToken(context.TODO(), &cctx)
 	if err != nil {
 		return err
 	}
@@ -51,5 +48,5 @@ func doStatus(cmd *cobra.Command, addr string) error {
 		return showErrorToUser(err)
 	}
 
-	return cmdcommon.PrintJSON(cctx, result)
+	return spheron.PrintJSON(result)
 }

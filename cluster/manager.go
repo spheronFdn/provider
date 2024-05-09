@@ -55,7 +55,7 @@ var (
 type deploymentManager struct {
 	bus                 pubsub.Bus
 	client              Client
-	spClient            spheron.Client
+	spClient            *spheron.Client
 	session             session.Session
 	state               deploymentState
 	deployment          ctypes.IDeployment
@@ -80,6 +80,7 @@ func newDeploymentManager(s *service, deployment ctypes.IDeployment, isNewLease 
 	dm := &deploymentManager{
 		bus:                 s.bus,
 		client:              s.client,
+		spClient:            s.spClient,
 		session:             s.session,
 		state:               dsDeployActive,
 		deployment:          deployment,

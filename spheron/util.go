@@ -1,8 +1,11 @@
 package spheron
 
 import (
+	"os"
+
 	types3 "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	types "github.com/akash-network/akash-api/go/node/market/v1beta4"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 
 	"github.com/spf13/pflag"
 )
@@ -111,4 +114,13 @@ func MakeBidID(id types.OrderID, provider string) types.BidID {
 		OSeq:     id.OSeq,
 		Provider: provider,
 	}
+}
+
+func ReadKey(walletPath string, password string) *keystore.Key {
+	b, _ := os.ReadFile(walletPath)
+	key, _ := keystore.DecryptKey(b, password)
+	if key != nil {
+		return key
+	}
+	return nil
 }

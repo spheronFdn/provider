@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 )
 
 // Context implements a typical context created in SDK modules for transaction
@@ -20,7 +22,7 @@ type Context struct {
 	// OutputFormat      string
 	// Height            int64
 	HomeDir string
-	Address string
+	Key     *keystore.Key
 	// KeyringDir string
 	// From              string
 	// BroadcastMode     string
@@ -46,6 +48,11 @@ func (ctx Context) WithHomeDir(dir string) Context {
 	if dir != "" {
 		ctx.HomeDir = dir
 	}
+	return ctx
+}
+
+func (ctx Context) WithKeyFromFile(walletPath string, password string) Context {
+	ctx.Key = ReadKey(walletPath, password)
 	return ctx
 }
 

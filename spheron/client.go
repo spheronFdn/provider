@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/akash-network/provider/tools/fromctx"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/tendermint/tendermint/libs/log"
 )
@@ -37,10 +38,9 @@ type Client struct {
 
 type ClientConfig struct {
 	HomeDir string
-	Address string
+	Key     *keystore.Key
 }
 
-// NewClient creates a new HelperClient with the specified base URL.
 func NewClient(config ClientConfig) *Client {
 	logger := fromctx.LogcFromCtx(context.Background())
 
@@ -50,12 +50,28 @@ func NewClient(config ClientConfig) *Client {
 	}
 
 	context := &Context{
-		Address: config.Address,
+		Key:     config.Key,
 		HomeDir: config.HomeDir,
 	}
 	return &Client{
 		BaseURL:   "http://localhost:8088",
 		Context:   *context,
+		EthClient: client,
+		Logger:    logger,
+	}
+}
+
+func NewClientWithContext(cctx Context) *Client {
+	logger := fromctx.LogcFromCtx(context.Background())
+
+	client, err := ethclient.DialContext(context.Background(), "wss://spheron-devnet.rpc.caldera.xyz/ws") // Use WebSocket RPC endpoint
+	if err != nil {
+		logger.Error("unable to connect to spheron-devnet")
+	}
+
+	return &Client{
+		BaseURL:   "http://localhost:8088",
+		Context:   cctx,
 		EthClient: client,
 		Logger:    logger,
 	}
@@ -208,16 +224,21 @@ func (client *Client) GetOrders(ctx context.Context, provider string) (*v1beta4.
 	return &response, nil
 }
 
+func (client *Client) Leases(ctx context.Context, in *v1beta4.QueryLeasesRequest, opts ...grpc.CallOption) (*v1beta4.QueryLeasesResponse, error) {
+	// TODO(spheron): fetch this information from our chain
+	return nil, nil
+}
+
 func SignMessage(ctx context.Context, msg string) (interface{}, error) {
 	// TODO(spheron): add signature with wallet
 	signedMessage := msg
 	return signedMessage, nil
 }
 
-func CreateAuthorizationToken(ctx context.Context) (string, error) {
+func CreateAuthorizationToken(ctx context.Context, cctx *Context) (string, error) {
 	ts := time.Now().Unix()
 	tsStr := fmt.Sprintf("%v", ts)
-	publicKey := "owner" // TODO(spheron) -> extract this data properly
+	publicKey := cctx.Key.Address.Hex() // TODO(spheron) -> extract this data properly
 	signedTimestamp, err := SignMessage(ctx, tsStr)
 	if err != nil {
 		return "", err
@@ -234,9 +255,4 @@ func CreateAuthorizationToken(ctx context.Context) (string, error) {
 	}
 	res := base64.StdEncoding.EncodeToString(authTokenBytes)
 	return res, nil
-}
-
-func (client *Client) Leases(ctx context.Context, in *v1beta4.QueryLeasesRequest, opts ...grpc.CallOption) (*v1beta4.QueryLeasesResponse, error) {
-	// TODO(spheron): fetch this information from our chain
-	return nil, nil
 }

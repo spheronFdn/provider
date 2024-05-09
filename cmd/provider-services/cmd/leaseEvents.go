@@ -3,12 +3,10 @@ package cmd
 import (
 	"sync"
 
-	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/spf13/cobra"
 
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
-	cmdcommon "github.com/akash-network/node/cmd/common"
 
 	cltypes "github.com/akash-network/provider/cluster/types/v1beta3"
 	gwrest "github.com/akash-network/provider/gateway/rest"
@@ -34,14 +32,13 @@ func leaseEventsCmd() *cobra.Command {
 }
 
 func doLeaseEvents(cmd *cobra.Command) error {
-	cctx, err := sdkclient.GetClientTxContext(cmd)
+	cctx, err := spheron.GetClientTxContext(cmd)
 	if err != nil {
 		return err
 	}
-
 	ctx := cmd.Context()
 
-	cl := spheron.NewClient()
+	cl := spheron.NewClientWithContext(cctx)
 
 	dseq, err := dseqFromFlags(cmd.Flags())
 	if err != nil {
@@ -50,9 +47,10 @@ func doLeaseEvents(cmd *cobra.Command) error {
 
 	leases, err := leasesForDeployment(cmd.Context(), *cl, cmd.Flags(), dtypes.DeploymentID{
 		//TODO(spheron) get this value from context or env
-		Owner: "owner",
+		Owner: cl.Context.Key.Address.Hex(), // "owner"
 		DSeq:  dseq,
 	})
+
 	if err != nil {
 		return markRPCServerError(err)
 	}
@@ -75,7 +73,7 @@ func doLeaseEvents(cmd *cobra.Command) error {
 
 	streams := make([]result, 0, len(leases))
 
-	authToken, err := spheron.CreateAuthorizationToken(ctx)
+	authToken, err := spheron.CreateAuthorizationToken(ctx, &cctx)
 	if err != nil {
 		return err
 	}
@@ -101,7 +99,7 @@ func doLeaseEvents(cmd *cobra.Command) error {
 
 	go func() {
 		for evt := range outch {
-			_ = cmdcommon.PrintJSON(cctx, evt)
+			_ = spheron.PrintJSON(evt)
 		}
 	}()
 

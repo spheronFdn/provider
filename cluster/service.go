@@ -47,7 +47,7 @@ var (
 type service struct {
 	session  session.Session
 	client   Client
-	spClient spheron.Client
+	spClient *spheron.Client
 	bus      pubsub.Bus
 	sub      pubsub.Subscriber
 

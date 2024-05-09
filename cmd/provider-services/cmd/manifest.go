@@ -53,13 +53,14 @@ func doSendManifest(cmd *cobra.Command, sdlpath string) error {
 	if err != nil {
 		return err
 	}
-	cl := spheron.NewClient()
+	cctx, err := spheron.GetClientTxContext(cmd)
+	cl := spheron.NewClientWithContext(cctx)
 
 	submitFailed := false
 
 	// TODO(spheron) extract provider address from chain for lease via dseq
 	// TODO(spheron) take tls.Certificate when instanciating newClient (gclient, err := gwrest.NewClient(cl, prov, []tls.Certificate{cert}))
-	authToken, err := spheron.CreateAuthorizationToken(context.TODO())
+	authToken, err := spheron.CreateAuthorizationToken(context.TODO(), &cctx)
 	if err != nil {
 		return err
 	}

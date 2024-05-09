@@ -18,7 +18,8 @@ func migrateEndpoints(cmd *cobra.Command, args []string) error {
 		return errEmptyEndpoints
 	}
 
-	cl := spheron.NewClient()
+	cctx, err := spheron.GetClientTxContext(cmd)
+	cl := spheron.NewClientWithContext(cctx)
 
 	prov, err := providerFromFlags(cmd.Flags())
 	if err != nil {
@@ -29,7 +30,7 @@ func migrateEndpoints(cmd *cobra.Command, args []string) error {
 		return markRPCServerError(err)
 	}
 
-	authToken, err := spheron.CreateAuthorizationToken(context.TODO())
+	authToken, err := spheron.CreateAuthorizationToken(context.TODO(), &cctx)
 	if err != nil {
 		return err
 	}

@@ -77,18 +77,18 @@ func NewService(ctx context.Context, session session.Session, spClient *spheron.
 	}
 
 	s := &service{
-		session:       session,
-		cluster:       cluster,
-		bus:           bus,
-		sub:           sub,
-		statusch:      make(chan chan<- *Status),
-		orders:        make(map[string]*order),
-		drainch:       make(chan *order),
-		lc:            lifecycle.New(),
-		cfg:           cfg,
-		pass:          providerAttrService,
-		waiter:        waiter,
-		spheronClient: spClient,
+		session:  session,
+		cluster:  cluster,
+		bus:      bus,
+		sub:      sub,
+		statusch: make(chan chan<- *Status),
+		orders:   make(map[string]*order),
+		drainch:  make(chan *order),
+		lc:       lifecycle.New(),
+		cfg:      cfg,
+		pass:     providerAttrService,
+		waiter:   waiter,
+		spClient: spClient,
 	}
 
 	go s.lc.WatchContext(ctx)
@@ -112,8 +112,8 @@ type service struct {
 	lc   lifecycle.Lifecycle
 	pass *providerAttrSignatureService
 
-	waiter        waiter.OperatorWaiter
-	spheronClient *spheron.Client
+	waiter   waiter.OperatorWaiter
+	spClient *spheron.Client
 }
 
 func (s *service) Close() error {
@@ -174,7 +174,7 @@ func (s *service) run(ctx context.Context, existingOrders []mtypes.OrderID) {
 	for _, orderID := range existingOrders {
 		key := mquery.OrderPath(orderID)
 		s.session.Log().Debug("creating catchup order", "order", key)
-		order, err := newOrder(s, orderID, s.cfg, s.pass, true, s.spheronClient)
+		order, err := newOrder(s, orderID, s.cfg, s.pass, true, s.spClient)
 		if err != nil {
 			s.session.Log().Error("creating catchup order", "order", key, "err", err)
 			continue
@@ -219,7 +219,7 @@ loop:
 				}
 
 				// create an order object for managing the bid process and order lifecycle
-				order, err := newOrder(s, ev.ID, s.cfg, s.pass, false, s.spheronClient)
+				order, err := newOrder(s, ev.ID, s.cfg, s.pass, false, s.spClient)
 				if err != nil {
 					s.session.Log().Error("handling order", "order", key, "err", err)
 					break
@@ -260,8 +260,8 @@ loop:
 	s.session.Log().Info("shutdown complete")
 }
 
-func queryExistingOrders(ctx context.Context, session session.Session, spheronClient *spheron.Client) ([]mtypes.OrderID, error) {
-	res, err := spheronClient.GetOrders(ctx, "provider")
+func queryExistingOrders(ctx context.Context, session session.Session, spClient *spheron.Client) ([]mtypes.OrderID, error) {
+	res, err := spClient.GetOrders(ctx, "provider")
 
 	if err != nil {
 		session.Log().Error("error querying open orders:", "err", err)

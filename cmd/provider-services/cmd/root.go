@@ -4,6 +4,7 @@ import (
 	"github.com/akash-network/provider/operator"
 	"github.com/akash-network/provider/operator/hostname"
 	"github.com/akash-network/provider/operator/ip"
+	"github.com/akash-network/provider/spheron"
 	"github.com/akash-network/provider/version"
 	"github.com/spf13/cobra"
 )
@@ -11,9 +12,10 @@ import (
 func NewRootCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
-		Use:          "provider-services",
-		Short:        "Provider services commands",
-		SilenceUsage: true,
+		Use:               "provider-services",
+		Short:             "Provider services commands",
+		SilenceUsage:      true,
+		PersistentPreRunE: GetInitContextPreRunE(),
 	}
 
 	cmd.AddCommand(SendManifestCmd())
@@ -35,7 +37,22 @@ func NewRootCmd() *cobra.Command {
 	cmd.AddCommand(operator.ToolsCmd())
 
 	cmd.AddCommand(version.NewVersionCommand())
-	cmd.AddCommand(KeysCmd("~/.spheron")) // TODO(spheron): Read this from a file
+	cmd.AddCommand(KeysCmd())
 
 	return cmd
+}
+
+func GetInitContextPreRunE() func(*cobra.Command, []string) error {
+	return func(cmd *cobra.Command, _ []string) error {
+		initClientCtx, err :=
+			spheron.ReadCommandFlags(spheron.Context{}, cmd.Flags())
+		if err != nil {
+			return err
+		}
+		if err := spheron.SetCmdClientContext(cmd, initClientCtx); err != nil {
+			return err
+		}
+
+		return nil
+	}
 }

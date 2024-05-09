@@ -37,8 +37,9 @@ func leaseLogsCmd() *cobra.Command {
 func doLeaseLogs(cmd *cobra.Command) error {
 
 	ctx := cmd.Context()
+	cctx, err := spheron.GetClientTxContext(cmd)
 
-	cl := spheron.NewClient()
+	cl := spheron.NewClientWithContext(cctx)
 
 	dseq, err := dseqFromFlags(cmd.Flags())
 	if err != nil {
@@ -47,7 +48,7 @@ func doLeaseLogs(cmd *cobra.Command) error {
 
 	leases, err := leasesForDeployment(cmd.Context(), *cl, cmd.Flags(), dtypes.DeploymentID{
 		//TODO(spheron) get this value from context or env
-		Owner: "owner",
+		Owner: cctx.Key.Address.Hex(), //"owner"
 		DSeq:  dseq,
 	})
 	if err != nil {
@@ -91,7 +92,7 @@ func doLeaseLogs(cmd *cobra.Command) error {
 	streams := make([]result, 0, len(leases))
 	for _, lid := range leases {
 		stream := result{lid: lid}
-		authToken, err := spheron.CreateAuthorizationToken(ctx)
+		authToken, err := spheron.CreateAuthorizationToken(ctx, &cctx)
 		if err != nil {
 			return err
 		}

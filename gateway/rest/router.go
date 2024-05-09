@@ -513,7 +513,12 @@ func createDeploymentCreateHandler(log log.Logger, bus pubsub.Bus) http.HandlerF
 			_ = req.Body.Close()
 		}()
 
-		sphCl := spheron.NewClient()
+		spConfig := spheron.ClientConfig{
+			HomeDir: "/Users/dusanstanisavljevic/Projects/spheron/compute-provider/.cache/run/kube/.akash",
+			Key:     nil,
+		}
+
+		sphCl := spheron.NewClient(spConfig)
 		msg := mtypes.EventOrderCreated{Context: sdkutil.BaseModuleEvent{Module: "market", Action: "bid-created"}, ID: mtypes.OrderID{
 			Owner: "owner",
 			DSeq:  15,
