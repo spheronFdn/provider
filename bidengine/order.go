@@ -422,7 +422,7 @@ loop:
 			}
 
 			bidch = runner.Do(func() runner.Result {
-				return runner.NewResult(o.spClient.SendTx("/Users/dusanstanisavljevic/Projects/spheron/compute-provider/spheron/keys/wallet1.json", tx))
+				return runner.NewResult(o.spClient.SendTx(tx))
 			})
 
 		case result := <-bidch:

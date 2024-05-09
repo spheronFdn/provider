@@ -44,7 +44,6 @@ import (
 	cip "github.com/akash-network/provider/cluster/types/v1beta3/clients/ip"
 	clfromctx "github.com/akash-network/provider/cluster/types/v1beta3/fromctx"
 	pmanifest "github.com/akash-network/provider/manifest"
-	"github.com/akash-network/provider/spheron"
 	"github.com/akash-network/provider/tools/fromctx"
 	"github.com/akash-network/provider/version"
 )
@@ -119,9 +118,7 @@ func newRouter(log log.Logger, addr string, pclient provider.Client, ctxConfig m
 
 	// PUT
 	shperonRouter := router.PathPrefix(spheronPathPrefix).Subrouter()
-	shperonRouter.HandleFunc("/bid",
-		createDeploymentCreateHandler(log, pclient.Bus())).
-		Methods(http.MethodPut)
+
 	shperonRouter.HandleFunc("/lease",
 		createLeasetCreateHandler(log, pclient.Bus())).
 		Methods(http.MethodPut)
@@ -503,33 +500,6 @@ func createManifestHandler(log log.Logger, mclient pmanifest.Client) http.Handle
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-	}
-}
-
-func createDeploymentCreateHandler(log log.Logger, bus pubsub.Bus) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-
-		defer func() {
-			_ = req.Body.Close()
-		}()
-
-		spConfig := spheron.ClientConfig{
-			HomeDir: "/Users/dusanstanisavljevic/Projects/spheron/compute-provider/.cache/run/kube/.akash",
-			Key:     nil,
-		}
-
-		sphCl := spheron.NewClient(spConfig)
-		msg := mtypes.EventOrderCreated{Context: sdkutil.BaseModuleEvent{Module: "market", Action: "bid-created"}, ID: mtypes.OrderID{
-			Owner: "owner",
-			DSeq:  15,
-			GSeq:  1,
-			OSeq:  1,
-		}}
-		tx, err := sphCl.GenerateTx(msg, "EventOrderCreated")
-		if err != nil {
-			return
-		}
-		sphCl.SendTx("/Users/dusanstanisavljevic/Projects/spheron/compute-provider/spheron/keys/wallet1.json", tx)
 	}
 }
 
