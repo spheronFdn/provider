@@ -5,14 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/akash-network/node/pubsub"
 	requestLogger "github.com/akash-network/provider/spheron/gen"
 
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
 )
@@ -90,25 +88,14 @@ func (client *Client) processEvents(event *requestLogger.RequestLoggerRequestSto
 	}
 }
 
-func (client *Client) SendTx(pathWallet string, body *EventRequestBody) (string, error) {
-	//spheron/keys/wallet1.json
-	b, err := os.ReadFile(pathWallet)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	const password = "testPassword"
-	key, err := keystore.DecryptKey(b, password)
-	if err != nil {
-		return "", err
-	}
+func (client *Client) SendTx(body *EventRequestBody) (string, error) {
 
 	chainId, err := client.EthClient.NetworkID(context.Background())
 	if err != nil {
 		return "", err
 	}
 	// Create a new transactor with your private key
-	auth, err := bind.NewKeyedTransactorWithChainID(key.PrivateKey, chainId)
+	auth, err := bind.NewKeyedTransactorWithChainID(client.Context.Key.PrivateKey, chainId)
 	if err != nil {
 		return "", err
 	}

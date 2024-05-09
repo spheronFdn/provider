@@ -529,7 +529,7 @@ func createDeploymentCreateHandler(log log.Logger, bus pubsub.Bus) http.HandlerF
 		if err != nil {
 			return
 		}
-		sphCl.SendTx("/Users/dusanstanisavljevic/Projects/spheron/compute-provider/spheron/keys/wallet1.json", tx)
+		sphCl.SendTx(tx)
 	}
 }
 
