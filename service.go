@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 	tpubsub "github.com/troian/pubsub"
 
-	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	provider "github.com/akash-network/akash-api/go/provider/v1"
 
 	"github.com/akash-network/node/pubsub"
@@ -20,6 +19,7 @@ import (
 	"github.com/akash-network/provider/operator/waiter"
 	"github.com/akash-network/provider/session"
 	"github.com/akash-network/provider/spheron"
+	"github.com/akash-network/provider/spheron/entities"
 	"github.com/akash-network/provider/tools/fromctx"
 	ptypes "github.com/akash-network/provider/types"
 )
@@ -290,22 +290,22 @@ loop:
 }
 
 type reservation struct {
-	resources         dtypes.ResourceGroup
-	adjustedResources dtypes.ResourceUnits
+	resources         entities.ResourceGroup
+	adjustedResources entities.ResourceUnits
 	clusterParams     interface{}
 }
 
 var _ ctypes.ReservationGroup = (*reservation)(nil)
 
-func (r *reservation) Resources() dtypes.ResourceGroup {
+func (r *reservation) Resources() entities.ResourceGroup {
 	return r.resources
 }
 
-func (r *reservation) SetAllocatedResources(val dtypes.ResourceUnits) {
+func (r *reservation) SetAllocatedResources(val entities.ResourceUnits) {
 	r.adjustedResources = val
 }
 
-func (r *reservation) GetAllocatedResources() dtypes.ResourceUnits {
+func (r *reservation) GetAllocatedResources() entities.ResourceUnits {
 	return r.adjustedResources
 }
 

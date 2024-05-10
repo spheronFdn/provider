@@ -8,14 +8,14 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
-	atypes "github.com/akash-network/akash-api/go/node/types/v1beta3"
 	"github.com/akash-network/node/sdl"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/akash-network/provider/cluster/util"
+	"github.com/akash-network/provider/spheron/entities"
 )
 
 type shellScriptPricing struct {
@@ -51,17 +51,17 @@ func MakeShellScriptPricing(path string, processLimit uint, runtimeLimit time.Du
 	return result, nil
 }
 
-func parseCPU(res *atypes.CPU) uint64 {
-	return res.Units.Val.Uint64()
+func parseCPU(res *entities.CPU) uint64 {
+	return res.Units
 }
 
-func parseMemory(res *atypes.Memory) uint64 {
-	return res.Quantity.Val.Uint64()
+func parseMemory(res *entities.Memory) uint64 {
+	return res.Units
 }
 
-func parseGPU(resource *atypes.GPU) gpuElement {
+func parseGPU(resource *entities.GPU) gpuElement {
 	res := gpuElement{
-		Units: resource.Units.Value(),
+		Units: resource.Units,
 		Attributes: gpuAttributes{
 			Vendor: make(map[string]gpuVendorAttributes),
 		},
@@ -94,7 +94,7 @@ func parseGPU(resource *atypes.GPU) gpuElement {
 	return res
 }
 
-func parseStorage(resource atypes.Volumes) []storageElement {
+func parseStorage(resource entities.Volumes) []storageElement {
 	res := make([]storageElement, 0, len(resource))
 
 	for _, storage := range resource {
@@ -107,19 +107,19 @@ func parseStorage(resource atypes.Volumes) []storageElement {
 
 		res = append(res, storageElement{
 			Class: class,
-			Size:  storage.Quantity.Val.Uint64(),
+			Size:  storage.Units,
 		})
 	}
 
 	return res
 }
 
-func (ssp shellScriptPricing) CalculatePrice(ctx context.Context, req Request) (sdk.DecCoin, error) {
+func (ssp shellScriptPricing) CalculatePrice(ctx context.Context, req Request) (uint64, error) {
 	buf := &bytes.Buffer{}
 
 	dataForScript := &dataForScript{
-		Resources: make([]dataForScriptElement, len(req.GSpec.Resources)),
-		Price:     req.GSpec.Price(),
+		Resources: make([]dataForScriptElement, len(req.DeploymentSpec.Resources)),
+		Price:     req.DeploymentSpec.Price(),
 	}
 
 	if req.PricePrecision > 0 {
@@ -127,7 +127,7 @@ func (ssp shellScriptPricing) CalculatePrice(ctx context.Context, req Request) (
 	}
 
 	// iterate over everything & sum it up
-	for i, group := range req.GSpec.Resources {
+	for i, group := range req.DeploymentSpec.Resources {
 		groupCount := group.Count
 
 		cpuQuantity := parseCPU(group.Resources.CPU)
@@ -143,14 +143,14 @@ func (ssp shellScriptPricing) CalculatePrice(ctx context.Context, req Request) (
 			Storage:          storageQuantity,
 			Count:            groupCount,
 			EndpointQuantity: endpointQuantity,
-			IPLeaseQuantity:  util.GetEndpointQuantityOfResourceUnits(group.Resources, atypes.Endpoint_LEASED_IP),
+			IPLeaseQuantity:  util.GetEndpointQuantityOfResourceUnits(group.Resources, entities.Endpoint_LEASED_IP),
 		}
 	}
 
 	encoder := json.NewEncoder(buf)
 	err := encoder.Encode(dataForScript)
 	if err != nil {
-		return sdk.DecCoin{}, err
+		return 0, err
 	}
 
 	// Take 1 from the channel
@@ -169,7 +169,7 @@ func (ssp shellScriptPricing) CalculatePrice(ctx context.Context, req Request) (
 	stderrBuf := &bytes.Buffer{}
 	cmd.Stderr = stderrBuf
 
-	denom := req.GSpec.Price().Denom
+	denom := req.DeploymentSpec.Price()
 
 	subprocEnv := os.Environ()
 	subprocEnv = append(subprocEnv, fmt.Sprintf("AKASH_OWNER=%s", req.Owner))
@@ -179,31 +179,27 @@ func (ssp shellScriptPricing) CalculatePrice(ctx context.Context, req Request) (
 	err = cmd.Run()
 
 	if ctxErr := processCtx.Err(); ctxErr != nil {
-		return sdk.DecCoin{}, ctxErr
+		return 0, ctxErr
 	}
 
 	if err != nil {
-		return sdk.DecCoin{}, fmt.Errorf("%w: script failure %s", err, stderrBuf.String())
+		return 0, fmt.Errorf("%w: script failure %s", err, stderrBuf.String())
 	}
 
 	// Decode the result
 	valueStr := strings.TrimSpace(outputBuf.String())
 	if valueStr == "" {
-		return sdk.DecCoin{}, fmt.Errorf("bid script must return amount:%w%w", io.EOF, ErrBidQuantityInvalid)
+		return 0, fmt.Errorf("bid script must return amount:%w%w", io.EOF, ErrBidQuantityInvalid)
 	}
 
-	price, err := sdk.NewDecFromStr(valueStr)
+	price, err := strconv.ParseUint(valueStr, 10, 64)
 	if err != nil {
-		return sdk.DecCoin{}, fmt.Errorf("%w%w", err, ErrBidQuantityInvalid)
+		return 0, fmt.Errorf("%w%w", err, ErrBidQuantityInvalid)
 	}
 
-	if price.IsZero() {
-		return sdk.DecCoin{}, ErrBidZero
+	if price == 0 {
+		return 0, ErrBidZero
 	}
 
-	if price.IsNegative() {
-		return sdk.DecCoin{}, ErrBidQuantityInvalid
-	}
-
-	return sdk.NewDecCoinFromDec(denom, price), nil
+	return price, nil
 }

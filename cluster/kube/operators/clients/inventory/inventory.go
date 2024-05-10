@@ -6,13 +6,13 @@ import (
 	"strings"
 
 	inventoryV1 "github.com/akash-network/akash-api/go/inventory/v1"
-	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	types "github.com/akash-network/akash-api/go/node/types/v1beta3"
 
 	"github.com/akash-network/provider/cluster/kube/builder"
 	ctypes "github.com/akash-network/provider/cluster/types/v1beta3"
 	cinventory "github.com/akash-network/provider/cluster/types/v1beta3/clients/inventory"
 	crd "github.com/akash-network/provider/pkg/apis/akash.network/v2beta2"
+	"github.com/akash-network/provider/spheron/entities"
 )
 
 var _ ctypes.Inventory = (*inventory)(nil)
@@ -42,7 +42,7 @@ func (inv *inventory) Dup() ctypes.Inventory {
 // tryAdjust cluster inventory
 // It returns two boolean values. First indicates if node-wide resources satisfy (true) requirements
 // Seconds indicates if cluster-wide resources satisfy (true) requirements
-func (inv *inventory) tryAdjust(node int, res *types.Resources) (*crd.SchedulerParams, bool, bool) {
+func (inv *inventory) tryAdjust(node int, res *entities.Resources) (*crd.SchedulerParams, bool, bool) {
 	nd := inv.Nodes[node].Dup()
 	sparams := &crd.SchedulerParams{}
 
@@ -54,7 +54,7 @@ func (inv *inventory) tryAdjust(node int, res *types.Resources) (*crd.SchedulerP
 		return nil, false, true
 	}
 
-	if !nd.Resources.Memory.Quantity.SubNLZ(res.Memory.Quantity) {
+	if !nd.Resources.Memory.Quantity.SubNLZ(entities.TransformToResourceValue(res.Memory.Units)) {
 		return nil, false, true
 	}
 
@@ -68,7 +68,7 @@ func (inv *inventory) tryAdjust(node int, res *types.Resources) (*crd.SchedulerP
 
 		if !attrs.Persistent {
 			if attrs.Class == "ram" {
-				if !nd.Resources.Memory.Quantity.SubNLZ(storage.Quantity) {
+				if !nd.Resources.Memory.Quantity.SubNLZ(entities.TransformToResourceValue(storage.Units)) {
 					return nil, false, true
 				}
 			} else {
@@ -89,7 +89,7 @@ func (inv *inventory) tryAdjust(node int, res *types.Resources) (*crd.SchedulerP
 
 		for idx := range storageClasses {
 			if storageClasses[idx].Info.Class == attrs.Class {
-				if !storageClasses[idx].Quantity.SubNLZ(storage.Quantity) {
+				if !storageClasses[idx].Quantity.SubNLZ(entities.TransformToResourceValue(storage.Units)) {
 					// cluster storage does not have enough space thus break to error
 					return nil, false, false
 				}
@@ -117,12 +117,12 @@ func (inv *inventory) tryAdjust(node int, res *types.Resources) (*crd.SchedulerP
 	return sparams, true, true
 }
 
-func tryAdjustCPU(rp *inventoryV1.ResourcePair, res *types.CPU) bool {
-	return rp.SubMilliNLZ(res.Units)
+func tryAdjustCPU(rp *inventoryV1.ResourcePair, res *entities.CPU) bool {
+	return rp.SubMilliNLZ(entities.TransformToResourceValue(res.Units))
 }
 
-func tryAdjustGPU(rp *inventoryV1.GPU, res *types.GPU, sparams *crd.SchedulerParams) bool {
-	reqCnt := res.Units.Value()
+func tryAdjustGPU(rp *inventoryV1.GPU, res *entities.GPU, sparams *crd.SchedulerParams) bool {
+	reqCnt := res.Units
 
 	if reqCnt == 0 {
 		return true
@@ -162,7 +162,7 @@ func tryAdjustGPU(rp *inventoryV1.GPU, res *types.GPU, sparams *crd.SchedulerPar
 		if reqCnt == 0 {
 			vendor := strings.ToLower(info.Vendor)
 
-			if !rp.Quantity.SubNLZ(res.Units) {
+			if !rp.Quantity.SubNLZ(entities.TransformToResourceValue(res.Units)) {
 				return false
 			}
 
@@ -187,7 +187,7 @@ func tryAdjustGPU(rp *inventoryV1.GPU, res *types.GPU, sparams *crd.SchedulerPar
 				}
 			}
 
-			res.Attributes = types.Attributes{
+			res.Attributes = entities.Attributes{
 				{
 					Key:   key,
 					Value: "true",
@@ -201,8 +201,8 @@ func tryAdjustGPU(rp *inventoryV1.GPU, res *types.GPU, sparams *crd.SchedulerPar
 	return false
 }
 
-func tryAdjustEphemeralStorage(rp *inventoryV1.ResourcePair, res *types.Storage) bool {
-	return rp.SubNLZ(res.Quantity)
+func tryAdjustEphemeralStorage(rp *inventoryV1.ResourcePair, res *entities.Storage) bool {
+	return rp.SubNLZ(entities.TransformToResourceValue(res.Units))
 }
 
 // nolint: unused
@@ -217,16 +217,16 @@ func (inv *inventory) Adjust(reservation ctypes.ReservationGroup, opts ...ctypes
 	}
 
 	origResources := reservation.Resources().GetResourceUnits()
-	resources := make(dtypes.ResourceUnits, 0, len(origResources))
-	adjustedResources := make(dtypes.ResourceUnits, 0, len(origResources))
+	resources := make(entities.ResourceUnits, 0, len(origResources))
+	adjustedResources := make(entities.ResourceUnits, 0, len(origResources))
 
 	for _, res := range origResources {
-		resources = append(resources, dtypes.ResourceUnit{
+		resources = append(resources, entities.ResourceUnit{
 			Resources: res.Resources.Dup(),
 			Count:     res.Count,
 		})
 
-		adjustedResources = append(adjustedResources, dtypes.ResourceUnit{
+		adjustedResources = append(adjustedResources, entities.ResourceUnit{
 			Resources: res.Resources.Dup(),
 			Count:     res.Count,
 		})
@@ -243,7 +243,7 @@ nodes:
 		for i := len(resources) - 1; i >= 0; i-- {
 			adjustedGroup := false
 
-			var adjusted *types.Resources
+			var adjusted *entities.Resources
 			if origResources[i].Count == resources[i].Count {
 				adjusted = &adjustedResources[i].Resources
 			} else {

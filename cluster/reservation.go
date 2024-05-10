@@ -1,46 +1,43 @@
 package cluster
 
 import (
-	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
-	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
-	atypes "github.com/akash-network/akash-api/go/node/types/v1beta3"
-
 	ctypes "github.com/akash-network/provider/cluster/types/v1beta3"
 	"github.com/akash-network/provider/cluster/util"
+	"github.com/akash-network/provider/spheron/entities"
 )
 
-func newReservation(order mtypes.OrderID, resources dtypes.ResourceGroup) *reservation {
+func newReservation(deploymentID entities.DeploymentID, resources entities.ResourceGroup) *reservation {
 	return &reservation{
-		order:            order,
+		deploymentID:     deploymentID,
 		resources:        resources,
-		endpointQuantity: util.GetEndpointQuantityOfResourceGroup(resources, atypes.Endpoint_LEASED_IP)}
+		endpointQuantity: util.GetEndpointQuantityOfResourceGroup(resources, entities.Endpoint_LEASED_IP)}
 }
 
 type reservation struct {
-	order             mtypes.OrderID
-	resources         dtypes.ResourceGroup
-	adjustedResources dtypes.ResourceUnits
+	deploymentID      entities.DeploymentID
+	resources         entities.ResourceGroup
+	adjustedResources entities.ResourceUnits
 	clusterParams     interface{}
 	endpointQuantity  uint
 	allocated         bool
 	ipsConfirmed      bool
 }
 
-var _ ctypes.Reservation = (*reservation)(nil)
+var _ ctypes.Reservation = (*reservation)(nil) //TODO (spheron): why this??????
 
-func (r *reservation) OrderID() mtypes.OrderID {
-	return r.order
+func (r *reservation) DeploymentID() entities.DeploymentID {
+	return r.deploymentID
 }
 
-func (r *reservation) Resources() dtypes.ResourceGroup {
+func (r *reservation) Resources() entities.ResourceGroup {
 	return r.resources
 }
 
-func (r *reservation) SetAllocatedResources(val dtypes.ResourceUnits) {
+func (r *reservation) SetAllocatedResources(val entities.ResourceUnits) {
 	r.adjustedResources = val
 }
 
-func (r *reservation) GetAllocatedResources() dtypes.ResourceUnits {
+func (r *reservation) GetAllocatedResources() entities.ResourceUnits {
 	return r.adjustedResources
 }
 

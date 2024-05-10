@@ -16,16 +16,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	tpubsub "github.com/troian/pubsub"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/tendermint/tendermint/libs/log"
 
-	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
-	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
-	atypes "github.com/akash-network/akash-api/go/node/types/v1beta3"
-
 	"github.com/akash-network/node/pubsub"
-	sdlutil "github.com/akash-network/node/sdl/util"
 	"github.com/akash-network/node/util/runner"
+	sdlutil "github.com/akash-network/provider/spheron/sdl/util"
 
 	ctypes "github.com/akash-network/provider/cluster/types/v1beta3"
 	cinventory "github.com/akash-network/provider/cluster/types/v1beta3/clients/inventory"
@@ -33,6 +28,7 @@ import (
 	cfromctx "github.com/akash-network/provider/cluster/types/v1beta3/fromctx"
 	"github.com/akash-network/provider/event"
 	"github.com/akash-network/provider/operator/waiter"
+	"github.com/akash-network/provider/spheron/entities"
 	"github.com/akash-network/provider/tools/fromctx"
 	ptypes "github.com/akash-network/provider/types"
 )
@@ -75,9 +71,9 @@ type invSnapshotResp struct {
 }
 
 type inventoryRequest struct {
-	order     mtypes.OrderID
-	resources dtypes.ResourceGroup
-	ch        chan<- inventoryResponse
+	deploymentID entities.DeploymentID
+	resources    entities.ResourceGroup
+	ch           chan<- inventoryResponse
 }
 
 type inventoryResponse struct {
@@ -142,7 +138,7 @@ func newInventoryService(
 
 	reservations := make([]*reservation, 0, len(deployments))
 	for _, d := range deployments {
-		reservations = append(reservations, newReservation(d.LeaseID().OrderID(), d.ManifestGroup()))
+		reservations = append(reservations, newReservation(entities.TransformOrderIDtoDeploymentID(d.LeaseID().OrderID()), entities.TransformGroup(d.ManifestGroup())))
 	}
 
 	go is.lc.WatchChannel(ctx.Done())
@@ -159,12 +155,12 @@ func (is *inventoryService) ready() <-chan struct{} {
 	return is.readych
 }
 
-func (is *inventoryService) lookup(order mtypes.OrderID, resources dtypes.ResourceGroup) (ctypes.Reservation, error) {
+func (is *inventoryService) lookup(deploymentID entities.DeploymentID, resources entities.ResourceGroup) (ctypes.Reservation, error) {
 	ch := make(chan inventoryResponse, 1)
 	req := inventoryRequest{
-		order:     order,
-		resources: resources,
-		ch:        ch,
+		deploymentID: deploymentID,
+		resources:    resources,
+		ch:           ch,
 	}
 
 	select {
@@ -176,7 +172,7 @@ func (is *inventoryService) lookup(order mtypes.OrderID, resources dtypes.Resour
 	}
 }
 
-func (is *inventoryService) reserve(order mtypes.OrderID, resources dtypes.ResourceGroup) (ctypes.Reservation, error) {
+func (is *inventoryService) reserve(deploymentID entities.DeploymentID, resources entities.ResourceGroup) (ctypes.Reservation, error) {
 	for idx, res := range resources.GetResourceUnits() {
 		if res.CPU == nil {
 			return nil, fmt.Errorf("%w: CPU resource at idx %d is nil", ErrInvalidResource, idx)
@@ -191,9 +187,9 @@ func (is *inventoryService) reserve(order mtypes.OrderID, resources dtypes.Resou
 
 	ch := make(chan inventoryResponse, 1)
 	req := inventoryRequest{
-		order:     order,
-		resources: resources,
-		ch:        ch,
+		deploymentID: deploymentID,
+		resources:    resources,
+		ch:           ch,
 	}
 
 	select {
@@ -209,11 +205,11 @@ func (is *inventoryService) reserve(order mtypes.OrderID, resources dtypes.Resou
 	}
 }
 
-func (is *inventoryService) unreserve(order mtypes.OrderID) error { // nolint:golint,unparam
+func (is *inventoryService) unreserve(deploymentID entities.DeploymentID) error { // nolint:golint,unparam
 	ch := make(chan inventoryResponse, 1)
 	req := inventoryRequest{
-		order: order,
-		ch:    ch,
+		deploymentID: deploymentID,
+		ch:           ch,
 	}
 
 	select {
@@ -271,51 +267,53 @@ func (is *inventoryService) statusV1(ctx context.Context) (*provider.Inventory, 
 	}
 }
 
-func (is *inventoryService) resourcesToCommit(rgroup dtypes.ResourceGroup) dtypes.ResourceGroup {
-	replacedResources := make(dtypes.ResourceUnits, 0)
+func (is *inventoryService) resourcesToCommit(rgroup entities.ResourceGroup) entities.ResourceGroup {
+	replacedResources := make(entities.ResourceUnits, 0)
+
+	//TODO (sphernon) check this whole calculation
 
 	for _, resource := range rgroup.GetResourceUnits() {
-		runits := atypes.Resources{
+		runits := entities.Resources{
 			ID: resource.ID,
-			CPU: &atypes.CPU{
+			CPU: &entities.CPU{
 				Units:      sdlutil.ComputeCommittedResources(is.config.CPUCommitLevel, resource.Resources.GetCPU().GetUnits()),
 				Attributes: resource.Resources.GetCPU().GetAttributes(),
 			},
-			GPU: &atypes.GPU{
+			GPU: &entities.GPU{
 				Units:      sdlutil.ComputeCommittedResources(is.config.GPUCommitLevel, resource.Resources.GetGPU().GetUnits()),
 				Attributes: resource.Resources.GetGPU().GetAttributes(),
 			},
-			Memory: &atypes.Memory{
-				Quantity:   sdlutil.ComputeCommittedResources(is.config.MemoryCommitLevel, resource.Resources.GetMemory().GetQuantity()),
+			Memory: &entities.Memory{
+				Units:      sdlutil.ComputeCommittedResources(is.config.MemoryCommitLevel, resource.Resources.GetMemory().GetUnits()),
 				Attributes: resource.Resources.GetMemory().GetAttributes(),
 			},
 			Endpoints: resource.Resources.GetEndpoints(),
 		}
 
-		storage := make(atypes.Volumes, 0, len(resource.Resources.GetStorage()))
+		storage := make(entities.Volumes, 0, len(resource.Resources.GetStorage()))
 
 		for _, volume := range resource.Resources.GetStorage() {
-			storage = append(storage, atypes.Storage{
+			storage = append(storage, entities.Storage{
 				Name:       volume.Name,
-				Quantity:   sdlutil.ComputeCommittedResources(is.config.StorageCommitLevel, volume.GetQuantity()),
+				Units:      sdlutil.ComputeCommittedResources(is.config.StorageCommitLevel, volume.GetUnits()),
 				Attributes: volume.GetAttributes(),
 			})
 		}
 
 		runits.Storage = storage
 
-		v := dtypes.ResourceUnit{
+		v := entities.ResourceUnit{
 			Resources: runits,
 			Count:     resource.Count,
-			Price:     sdk.DecCoin{},
+			Price:     0, //TODO (sphernon) check this price
 		}
 
 		replacedResources = append(replacedResources, v)
 	}
 
-	result := dtypes.GroupSpec{
+	result := entities.DeploymentSpec{
 		Name:         rgroup.GetName(),
-		Requirements: atypes.PlacementRequirements{},
+		Requirements: entities.PlacementRequirements{},
 		Resources:    replacedResources,
 	}
 
@@ -374,9 +372,9 @@ func updateReservationMetrics(reservations []*reservation) {
 			endpointsTotal = &activeEndpointsTotal
 		}
 		for _, resource := range reservation.Resources().GetResourceUnits() {
-			*cpuTotal += float64(resource.Resources.GetCPU().GetUnits().Value() * uint64(resource.Count))
-			*gpuTotal += float64(resource.Resources.GetGPU().GetUnits().Value() * uint64(resource.Count))
-			*memoryTotal += float64(resource.Resources.GetMemory().Quantity.Value() * uint64(resource.Count))
+			*cpuTotal += float64(resource.Resources.GetCPU().GetUnits() * uint64(resource.Count))
+			*gpuTotal += float64(resource.Resources.GetGPU().GetUnits() * uint64(resource.Count))
+			*memoryTotal += float64(resource.Resources.GetMemory().GetUnits() * uint64(resource.Count))
 			*endpointsTotal += float64(len(resource.Resources.GetEndpoints()))
 		}
 	}
@@ -417,11 +415,11 @@ func (is *inventoryService) handleRequest(req inventoryRequest, state *inventory
 	// convert the resources to the committed amount
 	resourcesToCommit := is.resourcesToCommit(req.resources)
 	// create new registration if capacity available
-	reservation := newReservation(req.order, resourcesToCommit)
+	reservation := newReservation(req.deploymentID, resourcesToCommit)
 
 	{
 		jReservation, _ := json.Marshal(req.resources.GetResourceUnits())
-		is.log.Debug(fmt.Sprintf("reservation requested. order=%s, resources=%s", req.order, jReservation))
+		is.log.Debug(fmt.Sprintf("reservation requested. order=%s, resources=%s", req.deploymentID, jReservation))
 	}
 
 	if reservation.endpointQuantity != 0 {
@@ -432,7 +430,7 @@ func (is *inventoryService) handleRequest(req inventoryRequest, state *inventory
 		numIPUnused := state.ipAddrUsage.Available - state.ipAddrUsage.InUse
 		pending := countPendingIPs(state)
 		if reservation.endpointQuantity > (numIPUnused - pending) {
-			is.log.Info("insufficient number of IP addresses available", "order", req.order)
+			is.log.Info("insufficient number of IP addresses available", "order", req.deploymentID)
 			req.ch <- inventoryResponse{err: fmt.Errorf("%w: unable to reserve %d", errInsufficientIPs, reservation.endpointQuantity)}
 			return
 		}
@@ -444,7 +442,7 @@ func (is *inventoryService) handleRequest(req inventoryRequest, state *inventory
 
 	err := state.inventory.Adjust(reservation)
 	if err != nil {
-		is.log.Info("insufficient capacity for reservation", "order", req.order)
+		is.log.Info("insufficient capacity for reservation", "order", req.deploymentID)
 		inventoryRequestsCounter.WithLabelValues("reserve", "insufficient-capacity").Inc()
 		req.ch <- inventoryResponse{err: err}
 		return
@@ -525,7 +523,7 @@ loop:
 			case event.ClusterDeployment:
 				// mark reservation allocated if deployment successful
 				for _, res := range state.reservations {
-					if !res.OrderID().Equals(ev.LeaseID.OrderID()) {
+					if !res.DeploymentID().Equals(entities.TransformOrderIDtoDeploymentID(ev.LeaseID.OrderID())) {
 						continue
 					}
 					if res.Resources().GetName() != ev.Group.Name {
@@ -544,7 +542,7 @@ loop:
 						}
 
 						is.log.Debug("reservation status update",
-							"order", res.OrderID(),
+							"deploymentID", res.DeploymentID(),
 							"resource-group", res.Resources().GetName(),
 							"allocated", res.allocated)
 
@@ -568,7 +566,7 @@ loop:
 		case req := <-is.lookupch:
 			// lookup registration
 			for _, res := range state.reservations {
-				if !res.OrderID().Equals(req.order) {
+				if !res.DeploymentID().Equals(req.deploymentID) {
 					continue
 				}
 				if res.Resources().GetName() != req.resources.GetName() {
@@ -582,17 +580,17 @@ loop:
 			inventoryRequestsCounter.WithLabelValues("lookup", "not-found").Inc()
 			req.ch <- inventoryResponse{err: errReservationNotFound}
 		case req := <-is.unreservech:
-			is.log.Debug("unreserving capacity", "order", req.order)
+			is.log.Debug("unreserving capacity", "order", req.deploymentID)
 			// remove reservation
 
-			is.log.Info("attempting to removing reservation", "order", req.order)
+			is.log.Info("attempting to removing reservation", "order", req.deploymentID)
 
 			for idx, res := range state.reservations {
-				if !res.OrderID().Equals(req.order) {
+				if !res.DeploymentID().Equals(req.deploymentID) {
 					continue
 				}
 
-				is.log.Info("removing reservation", "order", res.OrderID())
+				is.log.Info("removing reservation", "order", res.DeploymentID())
 
 				state.reservations = append(state.reservations[:idx], state.reservations[idx+1:]...)
 				// reclaim availableExternalPorts if unreserving allocated resources
@@ -601,7 +599,7 @@ loop:
 				}
 
 				req.ch <- inventoryResponse{value: res}
-				is.log.Info("unreserve capacity complete", "order", req.order)
+				is.log.Info("unreserve capacity complete", "order", req.deploymentID)
 				inventoryRequestsCounter.WithLabelValues("unreserve", "destroyed").Inc()
 				continue loop
 			}
@@ -663,7 +661,7 @@ loop:
 				// Process confirmed IP addresses usage
 				for _, confirmedOrderID := range res.confirmedResult {
 					for i, entry := range state.reservations {
-						if entry.order.Equals(confirmedOrderID) {
+						if entry.deploymentID.Equals(confirmedOrderID) {
 							state.reservations[i].ipsConfirmed = true
 							is.log.Info("confirmed IP allocation", "orderID", confirmedOrderID)
 							break
@@ -694,13 +692,13 @@ loop:
 }
 
 type confirmationItem struct {
-	orderID          mtypes.OrderID
+	deploymentID     entities.DeploymentID
 	expectedQuantity uint
 }
 
 type runCheckResult struct {
 	ipResult        cip.AddressUsage
-	confirmedResult []mtypes.OrderID
+	confirmedResult []entities.DeploymentID
 }
 
 func (is *inventoryService) runCheck(ctx context.Context, state *inventoryServiceState) <-chan runner.Result {
@@ -718,7 +716,7 @@ func (is *inventoryService) runCheck(ctx context.Context, state *inventoryServic
 		}
 
 		confirm = append(confirm, confirmationItem{
-			orderID:          entry.OrderID(),
+			deploymentID:     entry.DeploymentID(),
 			expectedQuantity: entry.endpointQuantity,
 		})
 	}
@@ -733,17 +731,17 @@ func (is *inventoryService) runCheck(ctx context.Context, state *inventoryServic
 		}
 
 		for _, confirmItem := range confirm {
-			status, err := is.clients.ip.GetIPAddressStatus(ctx, confirmItem.orderID)
+			status, err := is.clients.ip.GetIPAddressStatus(ctx, entities.TransformDeploymentIDtoOrderID(confirmItem.deploymentID))
 			if err != nil {
 				// This error is not really fatal, so don't bail on this entirely. The other results
 				// retrieved in this code are still valid
-				is.log.Error("failed checking IP address usage", "orderID", confirmItem.orderID, "error", err)
+				is.log.Error("failed checking IP address usage", "orderID", confirmItem.deploymentID, "error", err)
 				break
 			}
 
 			numConfirmed := uint(len(status))
 			if numConfirmed == confirmItem.expectedQuantity {
-				retval.confirmedResult = append(retval.confirmedResult, confirmItem.orderID)
+				retval.confirmedResult = append(retval.confirmedResult, confirmItem.deploymentID)
 			}
 		}
 
@@ -827,7 +825,7 @@ func reservationCountEndpoints(reservation *reservation) uint {
 	// the number of ports
 	for _, resource := range resources {
 		for _, endpoint := range resource.Resources.Endpoints {
-			if endpoint.Kind == atypes.Endpoint_RANDOM_PORT {
+			if entities.Endpoint_Kind(endpoint.Kind) == entities.Endpoint_RANDOM_PORT { //TODO (spheron): check why we need conversion
 				externalPortCount++
 			}
 		}

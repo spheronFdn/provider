@@ -1,8 +1,15 @@
 package entities
 
 import (
+	"math/big"
+
+	"github.com/akash-network/akash-api/go/manifest/v2beta2"
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
+	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
+	types "github.com/akash-network/akash-api/go/node/types/v1beta3"
+
 	"github.com/akash-network/akash-api/go/node/types/v1beta3"
+	cosmostypes "github.com/cosmos/cosmos-sdk/types"
 )
 
 func TransformGroupToDeployment(gs *dtypes.GroupSpec) *Deployment {
@@ -25,7 +32,7 @@ func TransformGroupToDeployment(gs *dtypes.GroupSpec) *Deployment {
 func mapPlacementRequirements(pr v1beta3.PlacementRequirements) PlacementRequirements {
 	return PlacementRequirements{
 		SignedBy:   mapSignedBy(pr.SignedBy),
-		Attributes: mapAttributes(pr.Attributes),
+		Attributes: MapAttributes(pr.Attributes),
 	}
 }
 
@@ -38,10 +45,22 @@ func mapSignedBy(sb v1beta3.SignedBy) SignedBy {
 }
 
 // Helper function to map Attributes from repo 1 to repo 2
-func mapAttributes(attrs v1beta3.Attributes) Attributes {
+func MapAttributes(attrs v1beta3.Attributes) Attributes {
 	mappedAttrs := make(Attributes, len(attrs))
 	for i, attr := range attrs {
 		mappedAttrs[i] = Attribute{
+			Key:   attr.Key,
+			Value: attr.Value,
+		}
+	}
+	return mappedAttrs
+}
+
+// Helper function to map Attributes from repo 1 to repo 2
+func MapAttributesToV1beta3(attrs Attributes) v1beta3.Attributes {
+	mappedAttrs := make(v1beta3.Attributes, len(attrs))
+	for i, attr := range attrs {
+		mappedAttrs[i] = v1beta3.Attribute{
 			Key:   attr.Key,
 			Value: attr.Value,
 		}
@@ -81,7 +100,7 @@ func mapCPU(cpu *v1beta3.CPU) *CPU {
 	}
 	return &CPU{
 		Units:      cpu.Units.Value(),
-		Attributes: mapAttributes(cpu.Attributes),
+		Attributes: MapAttributes(cpu.Attributes),
 	}
 }
 
@@ -92,7 +111,7 @@ func mapMemory(mem *v1beta3.Memory) *Memory {
 	}
 	return &Memory{
 		Units:      mem.Quantity.Value(),
-		Attributes: mapAttributes(mem.Attributes),
+		Attributes: MapAttributes(mem.Attributes),
 	}
 }
 
@@ -100,13 +119,17 @@ func mapMemory(mem *v1beta3.Memory) *Memory {
 func mapVolumes(vols v1beta3.Volumes) Volumes {
 	mappedVols := make(Volumes, len(vols))
 	for i, vol := range vols {
-		mappedVols[i] = Storage{
-			Name:       vol.Name,
-			Units:      vol.Quantity.Value(),
-			Attributes: mapAttributes(vol.Attributes),
-		}
+		mappedVols[i] = MapStorage(vol)
 	}
 	return mappedVols
+}
+
+func MapStorage(storage v1beta3.Storage) Storage {
+	return Storage{
+		Name:       storage.Name,
+		Units:      storage.Quantity.Value(),
+		Attributes: MapAttributes(storage.Attributes),
+	}
 }
 
 // Helper function to map GPU from repo 1 to repo 2
@@ -116,7 +139,7 @@ func mapGPU(gpu *v1beta3.GPU) *GPU {
 	}
 	return &GPU{
 		Units:      gpu.Units.Value(),
-		Attributes: mapAttributes(gpu.Attributes),
+		Attributes: MapAttributes(gpu.Attributes),
 	}
 }
 
@@ -130,4 +153,116 @@ func mapEndpoints(eps v1beta3.Endpoints) Endpoints {
 		}
 	}
 	return mappedEps
+}
+
+//	type OrderID struct {
+//		Owner string `protobuf:"bytes,1,opt,name=owner,proto3" json:"owner" yaml:"owner"`
+//		DSeq  uint64 `protobuf:"varint,2,opt,name=dseq,proto3" json:"dseq" yaml:"dseq"`
+//		GSeq  uint32 `protobuf:"varint,3,opt,name=gseq,proto3" json:"gseq" yaml:"gseq"`
+//		OSeq  uint32 `protobuf:"varint,4,opt,name=oseq,proto3" json:"oseq" yaml:"oseq"`
+//	}
+func TransformOrderIDtoDeploymentID(orderID mtypes.OrderID) DeploymentID {
+	return DeploymentID{
+		Owner: orderID.Owner,
+		DSeq:  orderID.DSeq,
+	}
+}
+
+func TransformDeploymentIDtoOrderID(deploymentID DeploymentID) mtypes.OrderID {
+	return mtypes.OrderID{
+		Owner: deploymentID.Owner,
+		DSeq:  deploymentID.DSeq,
+		GSeq:  1,
+		OSeq:  1,
+	}
+}
+
+// transformGroup converts a v2beta2.Group to a targetpackage.Group
+func TransformGroup(src *v2beta2.Group) Group {
+	var dest Group
+	dest.Name = src.Name
+	dest.Services = transformServices(src.Services)
+	return dest
+}
+
+// transformServices converts v2beta2.Services to targetpackage.Services
+func transformServices(src v2beta2.Services) Services {
+	dest := make(Services, len(src))
+	for i, svc := range src {
+		dest[i] = transformService(svc)
+	}
+	return dest
+}
+
+// transformService converts a v2beta2.Service to a targetpackage.Service
+func transformService(src v2beta2.Service) Service {
+	return Service{
+		Name:      src.Name,
+		Image:     src.Image,
+		Command:   src.Command,
+		Args:      src.Args,
+		Env:       src.Env,
+		Resources: mapResources(src.Resources),
+		Count:     src.Count,
+		Expose:    transformServiceExposes(src.Expose),
+		Params:    transformServiceParams(src.Params),
+		// Credentials: transformServiceCredentials(src.Credentials), //TODO (spheron): add this
+	}
+}
+
+// transformServiceExposes converts a slice of v2beta2.ServiceExpose to a slice of targetpackage.ServiceExpose
+func transformServiceExposes(src v2beta2.ServiceExposes) ServiceExposes {
+	dest := make(ServiceExposes, len(src))
+	for i, expose := range src {
+		dest[i] = ServiceExpose{
+			Port:                   expose.Port,
+			ExternalPort:           expose.ExternalPort,
+			Proto:                  ServiceProtocol(expose.Proto), // Casting enum type, assuming similar types
+			Service:                expose.Service,
+			Global:                 expose.Global,
+			Hosts:                  expose.Hosts,
+			HTTPOptions:            transformHTTPOptions(expose.HTTPOptions),
+			IP:                     expose.IP,
+			EndpointSequenceNumber: expose.EndpointSequenceNumber,
+		}
+	}
+	return dest
+}
+
+// transformHTTPOptions converts v2beta2.ServiceExposeHTTPOptions to targetpackage.ServiceExposeHTTPOptions
+func transformHTTPOptions(src v2beta2.ServiceExposeHTTPOptions) ServiceExposeHTTPOptions {
+	return ServiceExposeHTTPOptions{
+		MaxBodySize: src.MaxBodySize,
+		ReadTimeout: src.ReadTimeout,
+		SendTimeout: src.SendTimeout,
+		NextTries:   src.NextTries,
+		NextTimeout: src.NextTimeout,
+		NextCases:   src.NextCases,
+	}
+}
+
+// transformServiceParams converts v2beta2.ServiceParams to targetpackage.ServiceParams
+func transformServiceParams(src *v2beta2.ServiceParams) *ServiceParams {
+	if src == nil {
+		return nil
+	}
+	dest := &ServiceParams{
+		Storage: make([]StorageParams, len(src.Storage)),
+	}
+	for i, storage := range src.Storage {
+		dest.Storage[i] = StorageParams{
+			Name:     storage.Name,
+			Mount:    storage.Mount,
+			ReadOnly: storage.ReadOnly,
+		}
+	}
+	return dest
+}
+
+func TransformToResourceValue(value uint64) types.ResourceValue {
+	bigIntValue := new(big.Int).SetUint64(value)
+	resourceInt := cosmostypes.NewIntFromBigInt(bigIntValue)
+	return types.ResourceValue{
+		Val: resourceInt,
+	}
 }

@@ -1,11 +1,10 @@
 package util
 
 import (
-	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
-	atypes "github.com/akash-network/akash-api/go/node/types/v1beta3"
+	"github.com/akash-network/provider/spheron/entities"
 )
 
-func GetEndpointQuantityOfResourceGroup(resources dtypes.ResourceGroup, kind atypes.Endpoint_Kind) uint {
+func GetEndpointQuantityOfResourceGroup(resources entities.ResourceGroup, kind entities.Endpoint_Kind) uint {
 	endpoints := make(map[uint32]struct{})
 	for _, resource := range resources.GetResourceUnits() {
 		accumEndpointsOfResources(resource.Resources, kind, endpoints)
@@ -14,15 +13,15 @@ func GetEndpointQuantityOfResourceGroup(resources dtypes.ResourceGroup, kind aty
 	return uint(len(endpoints))
 }
 
-func accumEndpointsOfResources(r atypes.Resources, kind atypes.Endpoint_Kind, accum map[uint32]struct{}) {
+func accumEndpointsOfResources(r entities.Resources, kind entities.Endpoint_Kind, accum map[uint32]struct{}) {
 	for _, endpoint := range r.Endpoints {
-		if endpoint.Kind == kind {
+		if entities.Endpoint_Kind(endpoint.Kind) == kind { //TODO (spheron): check why this requires conversion
 			accum[endpoint.SequenceNumber] = struct{}{}
 		}
 	}
 }
 
-func GetEndpointQuantityOfResourceUnits(r atypes.Resources, kind atypes.Endpoint_Kind) uint {
+func GetEndpointQuantityOfResourceUnits(r entities.Resources, kind entities.Endpoint_Kind) uint {
 	endpoints := make(map[uint32]struct{})
 	accumEndpointsOfResources(r, kind, endpoints)
 

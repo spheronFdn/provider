@@ -6,13 +6,14 @@ import (
 	mani "github.com/akash-network/akash-api/go/manifest/v2beta2"
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
+	"github.com/akash-network/provider/spheron/entities"
 )
 
 // LeaseWon is the data structure that includes leaseID, group and price
 type LeaseWon struct {
-	LeaseID mtypes.LeaseID
-	Group   *dtypes.Group
-	Price   sdk.DecCoin
+	LeaseID    mtypes.LeaseID
+	Deployment *entities.Deployment
+	Price      sdk.DecCoin
 }
 
 // ManifestReceived stores leaseID, manifest received, deployment and group details

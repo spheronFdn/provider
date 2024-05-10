@@ -255,7 +255,7 @@ type manifestManagerFetchDataResult struct {
 func (m *manager) doFetchData(ctx context.Context) (manifestManagerFetchDataResult, error) {
 	subctx, cancel := context.WithTimeout(ctx, m.config.RPCQueryTimeout)
 	defer cancel()
-	deploymentResponse, err := m.spClient.GetDeployment(subctx, m.daddr.DSeq)
+	deploymentResponse, err := m.spClient.GetDeployment(subctx, m.daddr.DSeq) //TODO (spheron): figure this out
 	if err != nil {
 		return manifestManagerFetchDataResult{}, err
 	}
@@ -278,9 +278,9 @@ func (m *manager) doFetchData(ctx context.Context) (manifestManagerFetchDataResu
 			return manifestManagerFetchDataResult{}, fmt.Errorf("%w: could not locate group %v ", errNoGroupForLease, leaseID)
 		}
 		ev := event.LeaseWon{
-			LeaseID: leaseID,
-			Group:   &groupForLease,
-			Price:   lease.GetPrice(),
+			LeaseID:    leaseID,
+			Deployment: &groupForLease,
+			Price:      lease.GetPrice(),
 		}
 
 		leases[i] = ev
@@ -420,7 +420,7 @@ func (m *manager) validateRequest(req manifestRequest) error {
 	groupNames := make([]string, 0)
 
 	for _, lease := range m.localLeases {
-		groupNames = append(groupNames, lease.Group.GroupSpec.Name)
+		groupNames = append(groupNames, lease.Deployment.Spec.Name)
 	}
 
 	// Check that hostnames are not in use

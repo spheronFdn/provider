@@ -12,7 +12,6 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 
-	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
 	provider "github.com/akash-network/akash-api/go/provider/v1"
 
@@ -24,6 +23,7 @@ import (
 	crd "github.com/akash-network/provider/pkg/apis/akash.network/v2beta2"
 	"github.com/akash-network/provider/session"
 	"github.com/akash-network/provider/spheron"
+	"github.com/akash-network/provider/spheron/entities"
 	"github.com/akash-network/provider/tools/fromctx"
 	ptypes "github.com/akash-network/provider/types"
 )
@@ -81,8 +81,8 @@ type checkDeploymentExistsRequest struct {
 //
 //go:generate mockery --name Cluster
 type Cluster interface {
-	Reserve(mtypes.OrderID, dtypes.ResourceGroup) (ctypes.Reservation, error)
-	Unreserve(mtypes.OrderID) error
+	Reserve(entities.DeploymentID, entities.ResourceGroup) (ctypes.Reservation, error)
+	Unreserve(entities.DeploymentID) error
 }
 
 // StatusClient is the interface which includes status of service
@@ -222,12 +222,12 @@ func (s *service) Ready() <-chan struct{} {
 	return s.inventory.ready()
 }
 
-func (s *service) Reserve(order mtypes.OrderID, resources dtypes.ResourceGroup) (ctypes.Reservation, error) {
-	return s.inventory.reserve(order, resources)
+func (s *service) Reserve(deploymentID entities.DeploymentID, resources entities.ResourceGroup) (ctypes.Reservation, error) {
+	return s.inventory.reserve(deploymentID, resources)
 }
 
-func (s *service) Unreserve(order mtypes.OrderID) error {
-	return s.inventory.unreserve(order)
+func (s *service) Unreserve(deploymentID entities.DeploymentID) error {
+	return s.inventory.unreserve(deploymentID)
 }
 
 func (s *service) HostnameService() ctypes.HostnameServiceClient {
@@ -353,7 +353,7 @@ loop:
 					break
 				}
 				// STANIS
-				reservation, err := s.inventory.lookup(ev.LeaseID.OrderID(), mgroup)
+				reservation, err := s.inventory.lookup(entities.TransformOrderIDtoDeploymentID(ev.LeaseID.OrderID()), entities.TransformGroup(mgroup))
 
 				if err != nil {
 					s.log.Error("error looking up manifest", "err", err, "lease", ev.LeaseID, "group-name", mgroup.Name)
@@ -405,7 +405,7 @@ loop:
 			s.log.Info("manager done", "lease", dm.deployment.LeaseID())
 
 			// unreserve resources
-			if err := s.inventory.unreserve(dm.deployment.LeaseID().OrderID()); err != nil {
+			if err := s.inventory.unreserve(entities.TransformOrderIDtoDeploymentID(dm.deployment.LeaseID().OrderID())); err != nil {
 				s.log.Error("unreserving inventory",
 					"err", err,
 					"lease", dm.deployment.LeaseID())
@@ -453,7 +453,7 @@ func (s *service) teardownLease(lid mtypes.LeaseID) {
 	// unreserve resources if no manager present yet.
 	if lid.Provider == s.session.Provider().Owner {
 		s.log.Info("unreserving unmanaged order", "lease", lid)
-		err := s.inventory.unreserve(lid.OrderID())
+		err := s.inventory.unreserve(entities.TransformOrderIDtoDeploymentID(lid.OrderID()))
 		if err != nil && !errors.Is(errReservationNotFound, err) {
 			s.log.Error("unreserve failed", "lease", lid, "err", err)
 		}

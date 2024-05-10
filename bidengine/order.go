@@ -10,10 +10,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/boz/go-lifecycle"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/tendermint/tendermint/libs/log"
 
-	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
 	"github.com/akash-network/node/pubsub"
 	metricsutils "github.com/akash-network/node/util/metrics"
@@ -24,6 +22,7 @@ import (
 	"github.com/akash-network/provider/event"
 	"github.com/akash-network/provider/session"
 	"github.com/akash-network/provider/spheron"
+	"github.com/akash-network/provider/spheron/entities"
 )
 
 // order manages bidding and general lifecycle handling of an order.
@@ -158,7 +157,7 @@ func (o *order) run(checkForExistingBid bool) {
 
 	var (
 		// channels for async operations.
-		groupch       <-chan runner.Result
+		deploymentch  <-chan runner.Result
 		storedGroupCh <-chan runner.Result
 		clusterch     <-chan runner.Result
 		bidch         <-chan runner.Result
@@ -167,14 +166,16 @@ func (o *order) run(checkForExistingBid bool) {
 		shouldBidCh   <-chan runner.Result
 		bidTimeout    <-chan time.Time
 
-		group       *dtypes.Group
+		deployment *entities.Deployment
+		// group      *dtypes.Group
+
 		reservation ctypes.Reservation
 
 		won bool
 		// msg *mtypes.MsgCreateBid
 	)
 
-	groupch = runner.Do(func() runner.Result {
+	deploymentch = runner.Do(func() runner.Result {
 		res, err := o.spClient.GetGroup(ctx, o.orderID.GroupID().DSeq)
 		return runner.NewResult(res, err)
 	})
@@ -186,8 +187,8 @@ func (o *order) run(checkForExistingBid bool) {
 			return runner.NewResult(res, err)
 		})
 		// Hide the group details result for later
-		storedGroupCh = groupch
-		groupch = nil
+		storedGroupCh = deploymentch
+		deploymentch = nil
 	}
 
 	bidPlaced := false
@@ -232,7 +233,7 @@ loop:
 
 				bidTimeout = o.getBidTimeout()
 			}
-			groupch = storedGroupCh // Allow getting the group details result now
+			deploymentch = storedGroupCh // Allow getting the group details result now
 			storedGroupCh = nil
 
 		case ev := <-o.sub.Events():
@@ -262,9 +263,9 @@ loop:
 				o.log.Info("lease won", "lease", ev.ID)
 
 				if err := o.bus.Publish(event.LeaseWon{
-					LeaseID: ev.ID,
-					Group:   group,
-					Price:   ev.Price,
+					LeaseID:    ev.ID,
+					Deployment: deployment,
+					Price:      ev.Price,
 				}); err != nil {
 					o.log.Error("failed to publish to event queue", err)
 				}
@@ -304,24 +305,23 @@ loop:
 				break loop
 			}
 
-		case result := <-groupch:
+		case result := <-deploymentch:
 			// Group details fetched.
 
-			groupch = nil
-			o.log.Info("group fetched")
+			deploymentch = nil
+			o.log.Info("deployment fetched")
 
 			if result.Error() != nil {
-				o.log.Error("fetching group", "err", result.Error())
+				o.log.Error("fetching deployment", "err", result.Error())
 				break loop
 			}
 
-			res := result.Value().(dtypes.Group)
-			group = &res
-			fmt.Printf("GROUP %+v\n", group)
-			o.log.Info("GROUP", "group", group)
+			res := result.Value().(entities.Deployment)
+			deployment = &res
+			o.log.Info("DEPLOYMENT", "group", deployment)
 
 			shouldBidCh = runner.Do(func() runner.Result {
-				return runner.NewResult(o.shouldBid(group))
+				return runner.NewResult(o.shouldBid(deployment))
 			})
 
 		case result := <-shouldBidCh:
@@ -344,7 +344,7 @@ loop:
 			o.log.Info("requesting reservation")
 			// Begin reserving resources from cluster.
 			clusterch = runner.Do(metricsutils.ObserveRunner(func() runner.Result {
-				return runner.NewResult(o.cluster.Reserve(o.orderID, group))
+				return runner.NewResult(o.cluster.Reserve(entities.TransformOrderIDtoDeploymentID(o.orderID), deployment.Spec))
 			}, reservationDuration))
 
 		case result := <-clusterch:
@@ -378,8 +378,8 @@ loop:
 			pricech = runner.Do(metricsutils.ObserveRunner(func() runner.Result {
 				// Calculate price & bid
 				priceReq := Request{
-					Owner:          group.GroupID.Owner,
-					GSpec:          &group.GroupSpec,
+					Owner:          deployment.ID.Owner,
+					DeploymentSpec: &deployment.Spec,
 					PricePrecision: DefaultPricePrecision,
 				}
 				return runner.NewResult(o.cfg.PricingStrategy.CalculatePrice(ctx, priceReq))
@@ -391,16 +391,16 @@ loop:
 				break loop
 			}
 
-			price := result.Value().(sdk.DecCoin)
-			maxPrice := group.GroupSpec.Price()
+			price := result.Value().(uint64)
+			maxPrice := deployment.Spec.Price()
 
-			if maxPrice.GetDenom() != price.GetDenom() {
-				o.log.Error("Unsupported Denomination", "calculated", price.String(), "max-price", maxPrice.String())
+			if maxPrice != price {
+				o.log.Error("Unsupported Denomination", "calculated", price, "max-price", maxPrice)
 				break loop
 			}
 
-			if maxPrice.IsLT(price) {
-				o.log.Info("Price too high, not bidding", "price", price.String(), "max-price", maxPrice.String())
+			if maxPrice < price {
+				o.log.Info("Price too high, not bidding", "price", price, "max-price", maxPrice)
 				break loop
 			}
 
@@ -463,7 +463,7 @@ loop:
 		}
 		if reservation != nil {
 			o.log.Debug("unreserving reservation")
-			if err := o.cluster.Unreserve(reservation.OrderID()); err != nil {
+			if err := o.cluster.Unreserve(reservation.DeploymentID()); err != nil {
 				o.log.Error("error unreserving reservation", "err", err)
 				reservationCounter.WithLabelValues("close", metricsutils.FailLabel)
 			} else {
@@ -501,8 +501,8 @@ loop:
 	cancel()
 
 	// Wait for all runners to complete.
-	if groupch != nil {
-		<-groupch
+	if deploymentch != nil {
+		<-deploymentch
 	}
 	if clusterch != nil {
 		<-clusterch
@@ -515,7 +515,7 @@ loop:
 	}
 }
 
-func (o *order) shouldBid(group *dtypes.Group) (bool, error) {
+func (o *order) shouldBid(group *entities.Deployment) (bool, error) {
 	// does provider have required attributes?
 	// if !group.GroupSpec.MatchAttributes(o.session.Provider().Attributes) {
 	// 	o.log.Debug("unable to fulfill: incompatible provider attributes")

@@ -4,23 +4,23 @@ import (
 	"context"
 	"crypto/rand"
 	"math/big"
+	"strconv"
 
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	"github.com/akash-network/akash-api/go/node/types/unit"
-	atypes "github.com/akash-network/akash-api/go/node/types/v1beta3"
 	"github.com/akash-network/node/sdl"
 
 	"github.com/akash-network/provider/cluster/util"
+	"github.com/akash-network/provider/spheron/entities"
 )
 
 type Request struct {
 	Owner          string `json:"owner"`
-	GSpec          *dtypes.GroupSpec
+	DeploymentSpec *entities.DeploymentSpec
 	PricePrecision int
 }
 
@@ -29,7 +29,7 @@ const (
 )
 
 type BidPricingStrategy interface {
-	CalculatePrice(ctx context.Context, req Request) (sdk.DecCoin, error)
+	CalculatePrice(ctx context.Context, req Request) (uint64, error)
 }
 
 var (
@@ -128,14 +128,14 @@ func ceilBigRatToBigInt(v *big.Rat) *big.Int {
 	return result
 }
 
-func (fp scalePricing) CalculatePrice(_ context.Context, req Request) (sdk.DecCoin, error) {
+func (fp scalePricing) CalculatePrice(_ context.Context, req Request) (uint64, error) {
 	// Use unlimited precision math here.
 	// Otherwise, a correctly crafted order could create a cost of '1' given
 	// a possible configuration
 	cpuTotal := decimal.NewFromInt(0)
 	memoryTotal := decimal.NewFromInt(0)
 	storageTotal := make(Storage)
-	denom := req.GSpec.Price().Denom
+	denom := req.DeploymentSpec.Price()
 
 	for k := range fp.storageScale {
 		storageTotal[k] = decimal.NewFromInt(0)
@@ -143,22 +143,22 @@ func (fp scalePricing) CalculatePrice(_ context.Context, req Request) (sdk.DecCo
 
 	endpointTotal := decimal.NewFromInt(0)
 	ipTotal := decimal.NewFromInt(0).Add(fp.ipScale)
-	ipTotal = ipTotal.Mul(decimal.NewFromInt(int64(util.GetEndpointQuantityOfResourceGroup(req.GSpec, atypes.Endpoint_LEASED_IP))))
+	ipTotal = ipTotal.Mul(decimal.NewFromInt(int64(util.GetEndpointQuantityOfResourceGroup(req.DeploymentSpec, entities.Endpoint_LEASED_IP))))
 
 	// iterate over everything & sum it up
-	for _, group := range req.GSpec.Resources {
+	for _, group := range req.DeploymentSpec.Resources {
 		groupCount := decimal.NewFromInt(int64(group.Count)) // Expand uint32 to int64
 
-		cpuQuantity := decimal.NewFromBigInt(group.Resources.CPU.Units.Val.BigInt(), 0)
+		cpuQuantity := decimal.NewFromInt(int64(group.Resources.CPU.Units))
 		cpuQuantity = cpuQuantity.Mul(groupCount)
 		cpuTotal = cpuTotal.Add(cpuQuantity)
 
-		memoryQuantity := decimal.NewFromBigInt(group.Resources.Memory.Quantity.Val.BigInt(), 0)
+		memoryQuantity := decimal.NewFromInt(int64(group.Resources.Memory.Units))
 		memoryQuantity = memoryQuantity.Mul(groupCount)
 		memoryTotal = memoryTotal.Add(memoryQuantity)
 
 		for _, storage := range group.Resources.Storage {
-			storageQuantity := decimal.NewFromBigInt(storage.Quantity.Val.BigInt(), 0)
+			storageQuantity := decimal.NewFromInt(int64(storage.Units))
 			storageQuantity = storageQuantity.Mul(groupCount)
 
 			storageClass := sdl.StorageEphemeral
@@ -173,7 +173,7 @@ func (fp scalePricing) CalculatePrice(_ context.Context, req Request) (sdk.DecCo
 			total, exists := storageTotal[storageClass]
 
 			if !exists {
-				return sdk.DecCoin{}, errors.Wrapf(errNoPriceScaleForStorageClass, storageClass)
+				return 0, errors.Wrapf(errNoPriceScaleForStorageClass, storageClass)
 			}
 
 			total = total.Add(storageQuantity)
@@ -210,7 +210,7 @@ func (fp scalePricing) CalculatePrice(_ context.Context, req Request) (sdk.DecCo
 		storageTotal.IsAnyNegative() ||
 		endpointTotal.IsNegative() ||
 		ipTotal.IsNegative() {
-		return sdk.DecCoin{}, ErrBidQuantityInvalid
+		return 0, ErrBidQuantityInvalid
 	}
 
 	totalCost := cpuTotal
@@ -222,24 +222,25 @@ func (fp scalePricing) CalculatePrice(_ context.Context, req Request) (sdk.DecCo
 	totalCost = totalCost.Add(ipTotal)
 
 	if totalCost.IsNegative() {
-		return sdk.DecCoin{}, ErrBidQuantityInvalid
+		return 0, ErrBidQuantityInvalid
 	}
 
 	if totalCost.IsZero() {
 		// Return an error indicating we can't bid with a cost of zero
-		return sdk.DecCoin{}, ErrBidZero
+		return 0, ErrBidZero
 	}
 
-	costDec, err := sdk.NewDecFromStr(totalCost.String())
+	costDec, err := strconv.ParseUint(totalCost.String(), 10, 64)
+
 	if err != nil {
-		return sdk.DecCoin{}, err
+		return 0, err
 	}
 
-	if !costDec.LTE(sdk.MaxSortableDec) {
-		return sdk.DecCoin{}, ErrBidQuantityInvalid
-	}
+	// if !costDec.LTE(sdk.MaxSortableDec) {
+	// 	return 0, ErrBidQuantityInvalid
+	// }
 
-	return sdk.NewDecCoinFromDec(denom, costDec), nil
+	return costDec, nil
 }
 
 type randomRangePricing int
@@ -248,8 +249,8 @@ func MakeRandomRangePricing() (BidPricingStrategy, error) {
 	return randomRangePricing(0), nil
 }
 
-func (randomRangePricing) CalculatePrice(_ context.Context, req Request) (sdk.DecCoin, error) {
-	min, max := calculatePriceRange(req.GSpec)
+func (randomRangePricing) CalculatePrice(_ context.Context, req Request) (uint64, error) {
+	min, max := calculatePriceRange(req.DeploymentSpec)
 	if min.IsEqual(max) {
 		return max, nil
 	}
@@ -272,7 +273,7 @@ func (randomRangePricing) CalculatePrice(_ context.Context, req Request) (sdk.De
 	return sdk.NewDecCoinFromDec(min.Denom, amount), nil
 }
 
-func calculatePriceRange(gspec *dtypes.GroupSpec) (sdk.DecCoin, sdk.DecCoin) {
+func calculatePriceRange(gspec *entities.DeploymentSpec) (sdk.DecCoin, sdk.DecCoin) {
 	// memory-based pricing:
 	//   min: requested memory * configured min price per Gi
 	//   max: requested memory * configured max price per Gi
@@ -285,7 +286,7 @@ func calculatePriceRange(gspec *dtypes.GroupSpec) (sdk.DecCoin, sdk.DecCoin) {
 
 	for _, group := range gspec.Resources {
 		mem = mem.Add(
-			sdk.NewIntFromUint64(group.Resources.Memory.Quantity.Value()).
+			sdk.NewIntFromUint64(group.Resources.Memory.Units).
 				MulRaw(int64(group.Count)))
 	}
 
@@ -352,6 +353,6 @@ type dataForScriptElement struct {
 
 type dataForScript struct {
 	Resources      []dataForScriptElement `json:"resources"`
-	Price          sdk.DecCoin            `json:"price"`
+	Price          uint64                 `json:"price"`
 	PricePrecision *int                   `json:"price_precision,omitempty"`
 }

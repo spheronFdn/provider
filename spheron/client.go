@@ -16,6 +16,7 @@ import (
 	"github.com/akash-network/akash-api/go/node/market/v1beta4"
 	"google.golang.org/grpc"
 
+	"github.com/akash-network/provider/spheron/entities"
 	"github.com/akash-network/provider/tools/fromctx"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -122,18 +123,99 @@ func (client *Client) SendPostRequest(ctx context.Context, endpoint string, data
 	return body, nil
 }
 
-func (client *Client) GetGroup(ctx context.Context, dseq uint64) (dtypes.Group, error) {
-	endpoint := fmt.Sprintf("/groups/%d", dseq)
+func (client *Client) GetGroup(ctx context.Context, dseq uint64) (entities.Deployment, error) {
+	// endpoint := fmt.Sprintf("/groups/%d", dseq)
 
-	responseData, err := client.SendRequest(ctx, endpoint)
-	if err != nil {
-		return dtypes.Group{}, fmt.Errorf("error sending request JSON: %v", err)
+	// responseData, err := client.SendRequest(ctx, endpoint)
+	// if err != nil {
+	// 	return dtypes.Group{}, fmt.Errorf("error sending request JSON: %v", err)
 
+	// }
+
+	responseData := `{
+		"id": {
+			"owner": "owner",
+			"dseq": 12345
+		},
+		"state": 1,
+		"spec": {
+			"name": "westcoast",
+			"requirements": {
+				"signed_by": {
+					"all_of": [],
+					"any_of": []
+				},
+				"attributes": [
+					{
+						"key": "region",
+						"value": "us-west"
+					}
+				]
+			},
+			"resources": [
+				{
+					"resource": {
+						"id": 1,
+						"cpu": {
+							"units": 100,
+							"attributes": []
+						},
+						"memory": {
+							"units": 16777216,
+							"attributes": []
+						},
+						"storage": [
+							{
+								"name": "default",
+								"units": 134217728,
+								"attributes": []
+							}
+						],
+						"gpu": {
+							"units": 0,
+							"attributes": []
+						},
+						"endpoints": []
+					},
+					"count": 1,
+					"price": 1000
+				},
+				{
+					"resource": {
+						"id": 2,
+						"cpu": {
+							"units": 100,
+							"attributes": []
+						},
+						"memory": {
+							"units": 16777216,
+							"attributes": []
+						},
+						"storage": [
+							{
+								"name": "default",
+								"units": 134217728,
+								"attributes": []
+							}
+						],
+						"gpu": {
+							"units": 0,
+							"attributes": []
+						},
+						"endpoints": []
+					},
+					"count": 1,
+					"price": 1000
+				}
+			]
+		},
+		"created_at": 2331
 	}
+	`
 
-	var group dtypes.Group
-	if err := json.Unmarshal(responseData, &group); err != nil {
-		return dtypes.Group{}, fmt.Errorf("error decoding JSON: %v", err)
+	var group entities.Deployment
+	if err := json.Unmarshal([]byte(responseData), &group); err != nil {
+		return entities.Deployment{}, fmt.Errorf("error decoding JSON: %v", err)
 	}
 	return group, nil
 }
