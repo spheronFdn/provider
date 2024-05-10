@@ -8,6 +8,7 @@ import (
 	"math/big"
 
 	"github.com/akash-network/provider/spheron/gen/NodeProviderRegistry"
+	"github.com/akash-network/provider/spheron/gen/OrderMatching"
 
 	"github.com/akash-network/node/pubsub"
 	"github.com/akash-network/provider/spheron/entities"
@@ -17,23 +18,37 @@ import (
 	"github.com/akash-network/akash-api/go/sdkutil"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/event"
 )
 
-func (client *Client) SubscribeEvents(ctx context.Context, bus pubsub.Bus) error {
-	// Define the contract address and ABI
-	contractAddress := common.HexToAddress("0xfffaf1762a1fa569f639abe1c05f38f4745c4976")
-	//contractABI := []byte(requestLogger.RequestLoggerMetaData.ABI)
+type EventRequestBody struct {
+	EventType string `json:"event_type"`
+	Body      string `json:"body"`
+}
 
-	// Instantiate the contract
+func (client *Client) SubscribeEvents(ctx context.Context, bus pubsub.Bus) error {
+
+	err := client.subToRequestLogger(ctx, bus)
+	if err != nil {
+		return err
+	}
+	err = client.subToOrderMatching(ctx, bus)
+	if err != nil {
+		return err
+	}
+
+	go client.handleChainEvents(ctx, bus)
+	return nil
+}
+
+func (client *Client) subToRequestLogger(ctx context.Context, bus pubsub.Bus) error {
+	contractAddress := common.HexToAddress(requestLoggerContract)
+
 	contract, err := requestLogger.NewRequestLogger(contractAddress, client.EthClient)
 	if err != nil {
 		return err
 	}
-	// Create a channel to receive events
 	txch := make(chan *requestLogger.RequestLoggerRequestStored)
 
-	// Subscribe to the event
 	subscription, err := contract.WatchRequestStored(nil, txch)
 	if err != nil {
 		return err
@@ -41,34 +56,80 @@ func (client *Client) SubscribeEvents(ctx context.Context, bus pubsub.Bus) error
 
 	client.Logger.Debug("Listening for requests")
 
-	go client.publishEvents(ctx, subscription, txch, bus)
+	go func() {
+		select {
+		case <-ctx.Done():
+			subscription.Unsubscribe()
+		case ev := <-txch:
+			client.ChainEventCh <- ev
+		}
+	}()
 
 	return nil
 }
 
-func (client *Client) publishEvents(ctx context.Context, sub event.Subscription, txchan chan *requestLogger.RequestLoggerRequestStored, bus pubsub.Bus) error {
-	var err error
+func (client *Client) subToOrderMatching(ctx context.Context, bus pubsub.Bus) error {
+	// Todo:(spheron) change contract addr
+	contractAddress := common.HexToAddress(requestLoggerContract)
+
+	contract, err := OrderMatching.NewOrderMatching(contractAddress, client.EthClient)
+	if err != nil {
+		return err
+	}
+	// Create a channel to receive events
+	txch := make(chan *OrderMatching.OrderMatchingOrderCreated)
+
+	// Subscribe to the event
+	subscription, err := contract.WatchOrderCreated(nil, txch)
+	if err != nil {
+		return err
+	}
+
+	client.Logger.Debug("Listening for requests")
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			subscription.Unsubscribe()
+		case ev := <-txch:
+			client.ChainEventCh <- ev
+		}
+	}()
+
+	return nil
+}
+
+func (client *Client) handleChainEvents(ctx context.Context, bus pubsub.Bus) {
+	// Todo:(spheron) Decouple the channels.
 loop:
 	for {
 		select {
 		case <-ctx.Done():
-			sub.Unsubscribe()
-			close(txchan)
-			break loop
-		case ed := <-txchan:
-			client.processEvents(ed, bus)
+			// sub.Unsubscribe()
+			// close(eventCh)
+			break loop // this thing might break
+		case ev := <-client.ChainEventCh:
+			switch ev.(type) {
+			case *OrderMatching.OrderMatchingOrderCreated:
+				// handle order create
+			case *OrderMatching.OrderMatchingOrderMatched:
+				// handle order matching
+			case *requestLogger.RequestLoggerRequestStored:
+				go client.processRequestLoggerEvents(ev.(*requestLogger.RequestLoggerRequestStored), bus)
+			}
 		}
 	}
-
-	return err
 }
 
-type EventRequestBody struct {
-	EventType string `json:"event_type"`
-	Body      string `json:"body"`
+func (client *Client) handleOrderCreated(event *OrderMatching.OrderMatchingOrderCreated, bus pubsub.Bus) {
+
 }
 
-func (client *Client) processEvents(event *requestLogger.RequestLoggerRequestStored, bus pubsub.Bus) {
+func (client *Client) handleOrderMatched(event *OrderMatching.OrderMatchingOrderMatched, bus pubsub.Bus) {
+
+}
+
+func (client *Client) processRequestLoggerEvents(event *requestLogger.RequestLoggerRequestStored, bus pubsub.Bus) {
 	fmt.Printf("Received event: %v\n", event)
 	// TODO(spheron) -> untill we have all contracts available take event.Request as if it's a json representation of akash event
 	var internalEvent interface{}

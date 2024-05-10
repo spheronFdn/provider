@@ -34,6 +34,7 @@ type Client struct {
 	Context   Context
 	EthClient *ethclient.Client
 	Logger    log.Logger
+	ChainEventCh   chan interface{}
 }
 
 type ClientConfig struct {
@@ -58,6 +59,7 @@ func NewClient(config ClientConfig) *Client {
 		Context:   *context,
 		EthClient: client,
 		Logger:    logger,
+		ChainEventCh: make(chan interface{}),
 	}
 }
 
