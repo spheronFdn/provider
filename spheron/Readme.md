@@ -16,3 +16,8 @@ cd spheron
 solc --bin --abi contract/requestLogger.sol -o build
 abigen  --bin=build/RequestLogger.bin --abi=build/RequestLogger.abi --pkg=gen --out=gen/requestLogger.go
 ```
+
+### To Generate ALL bindings run 
+```shell
+sh gen-binding.sh
+```

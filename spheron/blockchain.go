@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/big"
+
+	"github.com/akash-network/provider/spheron/gen/NodeProviderRegistry"
 
 	"github.com/akash-network/node/pubsub"
-	"github.com/akash-network/provider/spheron/gen/requestLogger"
 	"github.com/akash-network/provider/spheron/entities"
+	"github.com/akash-network/provider/spheron/gen/requestLogger"
 
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
 	"github.com/akash-network/akash-api/go/sdkutil"
@@ -109,7 +112,7 @@ func (client *Client) SendTx(body *EventRequestBody) (string, error) {
 		return "", err
 	}
 	// Define the contract address
-	contractAddress := common.HexToAddress("0xfffaf1762a1fa569f639abe1c05f38f4745c4976")
+	contractAddress := common.HexToAddress(requestLoggerContract)
 
 	// Bind the contract with the client and auth
 	instance, err := requestLogger.NewRequestLogger(contractAddress, client.EthClient)
@@ -132,7 +135,7 @@ func (client *Client) SendTx(body *EventRequestBody) (string, error) {
 	return tx.Hash().Hex(), nil
 }
 
-func (clinet *Client) GenerateTx(msg interface{}, eventType string) (*EventRequestBody, error) {
+func (client *Client) GenerateTx(msg interface{}, eventType string) (*EventRequestBody, error) {
 
 	msgStr, err := json.Marshal(msg)
 	if err != nil {
@@ -146,6 +149,56 @@ func (clinet *Client) GenerateTx(msg interface{}, eventType string) (*EventReque
 	}
 
 	return tx, nil
+}
+
+func (client *Client) AddNodeProvider(ctx context.Context, region string, paymentTokens []string) (string, error) {
+
+	chainId, err := client.EthClient.NetworkID(context.Background())
+	if err != nil {
+		return "", err
+	}
+
+	auth, err := bind.NewKeyedTransactorWithChainID(client.Context.Key.PrivateKey, chainId)
+	if err != nil {
+		return "", err
+	}
+	// Todo:(spheron) change this to registerNode Contract
+	contractAddress := common.HexToAddress(providerRegistryContract)
+
+	instance, err := NodeProviderRegistry.NewNodeProviderRegistry(contractAddress, client.EthClient)
+	if err != nil {
+		return "", err
+	}
+	tx, err := instance.AddNodeProvider(auth, region, client.Context.Key.Address, paymentTokens)
+	if err != nil {
+		return "", err
+	}
+	return tx.Hash().Hex(), nil
+}
+
+func (client *Client) RemoveNodeProvider(ctx context.Context, id *big.Int) (string, error) {
+
+	chainId, err := client.EthClient.NetworkID(context.Background())
+	if err != nil {
+		return "", err
+	}
+
+	auth, err := bind.NewKeyedTransactorWithChainID(client.Context.Key.PrivateKey, chainId)
+	if err != nil {
+		return "", err
+	}
+	// Todo:(spheron) change this to registerNode Contract
+	contractAddress := common.HexToAddress(providerRegistryContract)
+
+	instance, err := NodeProviderRegistry.NewNodeProviderRegistry(contractAddress, client.EthClient)
+	if err != nil {
+		return "", err
+	}
+	tx, err := instance.RemoveNodeProvider(auth, id)
+	if err != nil {
+		return "", err
+	}
+	return tx.Hash().Hex(), nil
 }
 
 func (client *Client) CheckBalance() {
