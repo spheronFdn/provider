@@ -30,8 +30,7 @@ func SendManifestCmd() *cobra.Command {
 		},
 	}
 
-	addManifestFlags(cmd)
-
+	addCmdFlags(cmd)
 	cmd.Flags().StringP(flagOutput, "o", outputText, "output format text|json|yaml. default text")
 
 	return cmd

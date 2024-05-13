@@ -36,7 +36,6 @@ func doLeaseStatus(cmd *cobra.Command) error {
 		return err
 	}
 
-	//TODO(spheron) use owner provider by user or one from env
 	bid, err := spheron.BidIDFromFlags(cmd.Flags(), spheron.WithOwner(cctx.Key.Address.Hex()))
 	if err != nil {
 		return err

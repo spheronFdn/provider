@@ -42,8 +42,8 @@ func addCmdFlags(cmd *cobra.Command) {
 	cmd.Flags().String(FlagProvider, "", "provider")
 	cmd.Flags().Uint64(FlagDSeq, 0, "deployment sequence")
 	cmd.Flags().String(flags.FlagHome, app.DefaultHome, "the application home directory")
-	cmd.Flags().String(flags.FlagFrom, "", "name or address of private key with which to sign")
-	cmd.Flags().String(flags.FlagKeyringBackend, flags.DefaultKeyringBackend, "select keyring's backend (os|file|kwallet|pass|test)")
+	cmd.Flags().String(flags.FlagFrom, "", "Wallet path")
+	cmd.Flags().String(FlagKeySecret, "", "Wallet key secret")
 
 	if err := cmd.MarkFlagRequired(FlagDSeq); err != nil {
 		panic(err.Error())
@@ -54,16 +54,8 @@ func addCmdFlags(cmd *cobra.Command) {
 	}
 }
 
-func addManifestFlags(cmd *cobra.Command) {
-	addCmdFlags(cmd)
-
-	cmd.Flags().Uint32(FlagGSeq, 1, "group sequence")
-	cmd.Flags().Uint32(FlagOSeq, 1, "order sequence")
-}
-
 func addLeaseFlags(cmd *cobra.Command) {
-	addManifestFlags(cmd)
-
+	addCmdFlags(cmd)
 	if err := cmd.MarkFlagRequired(FlagProvider); err != nil {
 		panic(err.Error())
 	}

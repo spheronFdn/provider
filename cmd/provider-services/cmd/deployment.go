@@ -28,9 +28,7 @@ func AddDeploymentCommand() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE:  runDeploymentCmd,
 	}
-
-	cmd.Flags().String(FlagFrom, "", "Wallet path")
-	cmd.Flags().String(FlagKeySecret, "", "Wallet key secret")
+	addCmdFlags(cmd)
 
 	return cmd
 }
