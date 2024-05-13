@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -65,7 +66,6 @@ func requestDeploymentID(req *http.Request) dtypes.DeploymentID {
 func requireOwner() mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// TODO(spheron) : Use our custom authorization
 			// Extract and decode the authorization header
 			authHeader := r.Header.Get("Auth-Spheron")
 			if authHeader == "" {
@@ -86,12 +86,24 @@ func requireOwner() mux.MiddlewareFunc {
 				return
 			}
 
-			// TODO(spheron): Implement custom authorization using the `authData` values
 			// Check if timestamp is in range of -20sec:now, and if user actually signed it with private key !
-			pubKey := authData.PubKey
-
+			pubKey, err := spheron.DecodePublicKey(authData.PubKey)
+			if err != nil {
+				http.Error(w, "Invalid format for public key ", http.StatusBadRequest)
+				return
+			}
+			valid, err := spheron.ValidateAuthToken(pubKey, authData.SignedTimestamp, strconv.FormatInt(authData.Timestamp, 10))
+			if err != nil {
+				http.Error(w, "Error during auth token validation ", http.StatusBadRequest)
+				return
+			}
+			if !valid {
+				http.Error(w, "Auth token validation has not passed ", http.StatusBadRequest)
+				return
+			}
+			walletAddress := crypto.PubkeyToAddress(*pubKey).Hex()
 			// Set the owner information into the request context
-			context.Set(r, ownerContextKey, pubKey)
+			context.Set(r, ownerContextKey, walletAddress)
 			next.ServeHTTP(w, r)
 		})
 	}
