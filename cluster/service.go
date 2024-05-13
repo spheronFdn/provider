@@ -13,7 +13,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
-	provider "github.com/akash-network/akash-api/go/provider/v1"
+	provider "github.com/akash-network/provider/spheron/entities/provider"
 
 	"github.com/akash-network/node/pubsub"
 
@@ -349,7 +349,7 @@ loop:
 
 				mgroup := ev.ManifestGroup()
 				if mgroup == nil {
-					s.log.Error("indeterminate manifest group", "lease", ev.LeaseID, "group-name", ev.Group.GroupSpec.Name)
+					s.log.Error("indeterminate manifest group", "lease", ev.LeaseID, "group-name", ev.Deployment.Spec.Name)
 					break
 				}
 				// STANIS

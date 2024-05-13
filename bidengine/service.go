@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	provider "github.com/akash-network/akash-api/go/provider/v1"
+	provider "github.com/akash-network/provider/spheron/entities/provider"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	tpubsub "github.com/troian/pubsub"

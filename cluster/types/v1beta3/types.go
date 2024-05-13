@@ -8,6 +8,7 @@ import (
 
 	inventoryV1 "github.com/akash-network/akash-api/go/inventory/v1"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
+	ientities "github.com/akash-network/provider/spheron/entities/inventory"
 	"github.com/pkg/errors"
 	eventsv1 "k8s.io/api/events/v1"
 
@@ -65,8 +66,8 @@ func WithDryRun() InventoryOption {
 
 type Inventory interface {
 	Adjust(ReservationGroup, ...InventoryOption) error
-	Metrics() inventoryV1.Metrics
-	Snapshot() inventoryV1.Cluster
+	Metrics() ientities.Metrics
+	Snapshot() inventoryV1.Cluster //TODO(spheron): switch types
 	Dup() Inventory
 }
 
@@ -121,8 +122,8 @@ type ExecResult interface {
 
 // Status stores current leases and inventory statuses
 type Status struct {
-	Leases    uint32                       `json:"leases"`
-	Inventory inventoryV1.InventoryMetrics `json:"inventory"`
+	Leases    uint32                     `json:"leases"`
+	Inventory ientities.InventoryMetrics `json:"inventory"`
 }
 
 // ServiceStatus stores the current status of service

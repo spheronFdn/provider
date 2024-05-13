@@ -13,6 +13,7 @@ import (
 	cinventory "github.com/akash-network/provider/cluster/types/v1beta3/clients/inventory"
 	crd "github.com/akash-network/provider/pkg/apis/akash.network/v2beta2"
 	"github.com/akash-network/provider/spheron/entities"
+	ientities "github.com/akash-network/provider/spheron/entities/inventory"
 )
 
 var _ ctypes.Inventory = (*inventory)(nil)
@@ -314,7 +315,7 @@ func (inv *inventory) Snapshot() inventoryV1.Cluster {
 	return *inv.Cluster.Dup()
 }
 
-func (inv *inventory) Metrics() inventoryV1.Metrics {
+func (inv *inventory) Metrics() ientities.Metrics {
 	cpuTotal := uint64(0)
 	gpuTotal := uint64(0)
 	memoryTotal := uint64(0)
@@ -327,14 +328,14 @@ func (inv *inventory) Metrics() inventoryV1.Metrics {
 	storageEphemeralAvailable := uint64(0)
 	storageAvailable := make(map[string]int64)
 
-	ret := inventoryV1.Metrics{
-		Nodes: make([]inventoryV1.NodeMetrics, 0, len(inv.Nodes)),
+	ret := ientities.Metrics{
+		Nodes: make([]ientities.NodeMetrics, 0, len(inv.Nodes)),
 	}
 
 	for _, nd := range inv.Nodes {
-		invNode := inventoryV1.NodeMetrics{
+		invNode := ientities.NodeMetrics{
 			Name: nd.Name,
-			Allocatable: inventoryV1.ResourcesMetric{
+			Allocatable: ientities.ResourcesMetric{
 				CPU:              uint64(nd.Resources.CPU.Quantity.Allocatable.MilliValue()),
 				GPU:              uint64(nd.Resources.GPU.Quantity.Allocatable.Value()),
 				Memory:           uint64(nd.Resources.Memory.Quantity.Allocatable.Value()),
@@ -374,7 +375,7 @@ func (inv *inventory) Metrics() inventoryV1.Metrics {
 		storageAvailable[class.Info.Class] = tmp.Value()
 	}
 
-	ret.TotalAllocatable = inventoryV1.MetricTotal{
+	ret.TotalAllocatable = ientities.MetricTotal{
 		CPU:              cpuTotal,
 		GPU:              gpuTotal,
 		Memory:           memoryTotal,
@@ -382,7 +383,7 @@ func (inv *inventory) Metrics() inventoryV1.Metrics {
 		Storage:          storageTotal,
 	}
 
-	ret.TotalAvailable = inventoryV1.MetricTotal{
+	ret.TotalAvailable = ientities.MetricTotal{
 		CPU:              cpuAvailable,
 		GPU:              gpuAvailable,
 		Memory:           memoryAvailable,

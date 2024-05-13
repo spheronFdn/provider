@@ -406,16 +406,17 @@ loop:
 
 			o.log.Debug("submitting fulfillment", "price", price)
 
-			offer := mtypes.ResourceOfferFromRU(reservation.GetAllocatedResources())
+			// TODO(spheron) : send spheron transaction
+			offer := entities.ResourceOfferFromRU(reservation.GetAllocatedResources())
 
 			// TODO(spheron): make provider address dynamic
-			msg := mtypes.MsgCreateBid{
-				Order:          o.orderID,
+			msg := entities.MsgCreateBid{
+				Order:          entities.TransformOrderIDtoDeploymentID(o.orderID),
 				Provider:       "provider",
 				Price:          price,
-				Deposit:        o.cfg.Deposit,
 				ResourcesOffer: offer,
 			}
+
 			tx, err := o.spClient.GenerateTx(msg, "EventOrderCreated")
 			if err != nil {
 				break loop

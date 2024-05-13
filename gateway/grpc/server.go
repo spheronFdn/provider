@@ -16,7 +16,7 @@ import (
 
 	"github.com/akash-network/akash-api/go/grpc/gogoreflection"
 	ctypes "github.com/akash-network/akash-api/go/node/cert/v1beta3"
-	providerv1 "github.com/akash-network/akash-api/go/provider/v1"
+	providerv1 "github.com/akash-network/provider/spheron/entities/provider"
 
 	"github.com/akash-network/provider"
 	"github.com/akash-network/provider/tools/fromctx"

@@ -9,8 +9,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
-
 	"github.com/akash-network/akash-api/go/node/types/unit"
 	"github.com/akash-network/node/sdl"
 
@@ -135,7 +133,6 @@ func (fp scalePricing) CalculatePrice(_ context.Context, req Request) (uint64, e
 	cpuTotal := decimal.NewFromInt(0)
 	memoryTotal := decimal.NewFromInt(0)
 	storageTotal := make(Storage)
-	denom := req.DeploymentSpec.Price()
 
 	for k := range fp.storageScale {
 		storageTotal[k] = decimal.NewFromInt(0)
@@ -251,29 +248,32 @@ func MakeRandomRangePricing() (BidPricingStrategy, error) {
 
 func (randomRangePricing) CalculatePrice(_ context.Context, req Request) (uint64, error) {
 	min, max := calculatePriceRange(req.DeploymentSpec)
-	if min.IsEqual(max) {
+	if min == max {
 		return max, nil
 	}
 
 	const scale = 10000
 
-	delta := max.Amount.Sub(min.Amount).Mul(sdk.NewDec(scale))
+	delta := max - (min * scale)
 
-	minbid := delta.TruncateInt64()
+	// minbid := delta.TruncateInt64()
+	minbid := delta
 	if minbid < 1 {
 		minbid = 1
 	}
-	val, err := rand.Int(rand.Reader, big.NewInt(minbid))
+	val, err := rand.Int(rand.Reader, big.NewInt(int64(minbid)))
 	if err != nil {
-		return sdk.DecCoin{}, err
+		return 0, err
 	}
 
-	scaledValue := sdk.NewDecFromBigInt(val).QuoInt64(scale).QuoInt64(100)
-	amount := min.Amount.Add(scaledValue)
-	return sdk.NewDecCoinFromDec(min.Denom, amount), nil
+	uintVal := val.Uint64()
+
+	scaledValue := uintVal / scale / 100
+	amount := min + scaledValue
+	return amount, nil
 }
 
-func calculatePriceRange(gspec *entities.DeploymentSpec) (sdk.DecCoin, sdk.DecCoin) {
+func calculatePriceRange(gspec *entities.DeploymentSpec) (uint64, uint64) {
 	// memory-based pricing:
 	//   min: requested memory * configured min price per Gi
 	//   max: requested memory * configured max price per Gi
@@ -282,40 +282,35 @@ func calculatePriceRange(gspec *entities.DeploymentSpec) (sdk.DecCoin, sdk.DecCo
 	// assumption: all same denom (returned by gspec.Price())
 	// assumption: gspec.Price() > 0
 
-	mem := sdk.NewInt(0)
+	mem := uint64(0)
 
 	for _, group := range gspec.Resources {
-		mem = mem.Add(
-			sdk.NewIntFromUint64(group.Resources.Memory.Units).
-				MulRaw(int64(group.Count)))
+		mem = mem +
+			(group.Resources.Memory.Units)*uint64(group.Count)
 	}
 
 	rmax := gspec.Price()
 
-	const minGroupMemPrice = int64(50)
-	const maxGroupMemPrice = int64(1048576)
+	const minGroupMemPrice = uint64(50)
+	const maxGroupMemPrice = uint64(1048576)
 
-	cmin := sdk.NewDecFromInt(mem.MulRaw(
-		minGroupMemPrice).
-		Quo(sdk.NewInt(unit.Gi)))
+	cmin := mem * minGroupMemPrice / unit.Gi
 
-	cmax := sdk.NewDecFromInt(mem.MulRaw(
-		maxGroupMemPrice).
-		Quo(sdk.NewInt(unit.Gi)))
+	cmax := mem * maxGroupMemPrice / unit.Gi
 
-	if cmax.GT(rmax.Amount) {
-		cmax = rmax.Amount
+	if cmax > rmax {
+		cmax = rmax
 	}
 
-	if cmin.IsZero() {
-		cmin = sdk.NewDec(1)
+	if cmin == 0 {
+		cmin = 1
 	}
 
-	if cmax.IsZero() {
-		cmax = sdk.NewDec(1)
+	if cmax == 0 {
+		cmax = 1
 	}
 
-	return sdk.NewDecCoinFromDec(rmax.Denom, cmin), sdk.NewDecCoinFromDec(rmax.Denom, cmax)
+	return cmin, cmax
 }
 
 var errPathEmpty = errors.New("script path cannot be the empty string")

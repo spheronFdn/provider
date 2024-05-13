@@ -303,3 +303,10 @@ func (m Volumes) EqualUnits(that Volumes) bool {
 
 	return true
 }
+
+type ResourcesOffer []ResourceOffer
+
+type ResourceOffer struct {
+	Resources Resources `protobuf:"bytes,1,opt,name=resources,proto3" json:"resources" yaml:"resources"`
+	Count     uint32    `protobuf:"varint,2,opt,name=count,proto3" json:"count" yaml:"count"`
+}

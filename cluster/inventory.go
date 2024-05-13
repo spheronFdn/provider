@@ -8,8 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	inventoryV1 "github.com/akash-network/akash-api/go/inventory/v1"
-	provider "github.com/akash-network/akash-api/go/provider/v1"
+	provider "github.com/akash-network/provider/spheron/entities/provider"
 	"github.com/boz/go-lifecycle"
 	"github.com/desertbit/timer"
 	"github.com/prometheus/client_golang/prometheus"
@@ -29,6 +28,7 @@ import (
 	"github.com/akash-network/provider/event"
 	"github.com/akash-network/provider/operator/waiter"
 	"github.com/akash-network/provider/spheron/entities"
+	ientities "github.com/akash-network/provider/spheron/entities/inventory"
 	"github.com/akash-network/provider/tools/fromctx"
 	ptypes "github.com/akash-network/provider/types"
 )
@@ -85,7 +85,7 @@ type inventoryService struct {
 	config                 Config
 	client                 Client
 	sub                    pubsub.Subscriber
-	statusch               chan chan<- inventoryV1.InventoryMetrics
+	statusch               chan chan<- ientities.InventoryMetrics
 	statusV1ch             chan chan<- invSnapshotResp
 	lookupch               chan inventoryRequest
 	reservech              chan inventoryRequest
@@ -121,7 +121,7 @@ func newInventoryService(
 		config:                 config,
 		client:                 client,
 		sub:                    sub,
-		statusch:               make(chan chan<- inventoryV1.InventoryMetrics),
+		statusch:               make(chan chan<- ientities.InventoryMetrics),
 		statusV1ch:             make(chan chan<- invSnapshotResp),
 		lookupch:               make(chan inventoryRequest),
 		reservech:              make(chan inventoryRequest),
@@ -225,22 +225,22 @@ func (is *inventoryService) unreserve(deploymentID entities.DeploymentID) error 
 	}
 }
 
-func (is *inventoryService) status(ctx context.Context) (inventoryV1.InventoryMetrics, error) {
-	ch := make(chan inventoryV1.InventoryMetrics, 1)
+func (is *inventoryService) status(ctx context.Context) (ientities.InventoryMetrics, error) {
+	ch := make(chan ientities.InventoryMetrics, 1)
 
 	select {
 	case <-is.lc.Done():
-		return inventoryV1.InventoryMetrics{}, ErrNotRunning
+		return ientities.InventoryMetrics{}, ErrNotRunning
 	case <-ctx.Done():
-		return inventoryV1.InventoryMetrics{}, ctx.Err()
+		return ientities.InventoryMetrics{}, ctx.Err()
 	case is.statusch <- ch:
 	}
 
 	select {
 	case <-is.lc.Done():
-		return inventoryV1.InventoryMetrics{}, ErrNotRunning
+		return ientities.InventoryMetrics{}, ErrNotRunning
 	case <-ctx.Done():
-		return inventoryV1.InventoryMetrics{}, ctx.Err()
+		return ientities.InventoryMetrics{}, ctx.Err()
 	case result := <-ch:
 		return result, nil
 	}
@@ -320,7 +320,7 @@ func (is *inventoryService) resourcesToCommit(rgroup entities.ResourceGroup) ent
 	return result
 }
 
-func (is *inventoryService) updateInventoryMetrics(metrics inventoryV1.Metrics) {
+func (is *inventoryService) updateInventoryMetrics(metrics ientities.Metrics) {
 	clusterInventoryAllocatable.WithLabelValues("nodes").Set(float64(len(metrics.Nodes)))
 	clusterInventoryAllocatable.WithLabelValues("cpu").Set(float64(metrics.TotalAllocatable.CPU) / 1000)
 	clusterInventoryAllocatable.WithLabelValues("gpu").Set(float64(metrics.TotalAllocatable.GPU) / 1000)
@@ -749,8 +749,8 @@ func (is *inventoryService) runCheck(ctx context.Context, state *inventoryServic
 	})
 }
 
-func (is *inventoryService) getStatus(state *inventoryServiceState) inventoryV1.InventoryMetrics {
-	status := inventoryV1.InventoryMetrics{}
+func (is *inventoryService) getStatus(state *inventoryServiceState) ientities.InventoryMetrics {
+	status := ientities.InventoryMetrics{}
 
 	if state.inventory == nil {
 		status.Error = errInventoryNotAvailableYet
@@ -758,7 +758,7 @@ func (is *inventoryService) getStatus(state *inventoryServiceState) inventoryV1.
 	}
 
 	for _, reservation := range state.reservations {
-		total := inventoryV1.MetricTotal{
+		total := ientities.MetricTotal{
 			Storage: make(map[string]int64),
 		}
 
@@ -778,7 +778,7 @@ func (is *inventoryService) getStatus(state *inventoryServiceState) inventoryV1.
 	}
 
 	for class, size := range state.inventory.Metrics().TotalAvailable.Storage {
-		status.Available.Storage = append(status.Available.Storage, inventoryV1.StorageStatus{Class: class, Size: size})
+		status.Available.Storage = append(status.Available.Storage, ientities.StorageStatus{Class: class, Size: size})
 	}
 
 	return status

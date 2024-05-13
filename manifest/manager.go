@@ -21,6 +21,7 @@ import (
 	"github.com/akash-network/provider/event"
 	"github.com/akash-network/provider/session"
 	"github.com/akash-network/provider/spheron"
+	"github.com/akash-network/provider/spheron/entities"
 )
 
 const (
@@ -74,7 +75,7 @@ type manager struct {
 	manifestch chan manifestRequest
 	updatech   chan []byte
 
-	data            dtypes.QueryDeploymentResponse
+	data            entities.QueryDeploymentResponse
 	requests        []manifestRequest
 	pendingRequests []manifestRequest
 	manifests       []*maniv2beta2.Manifest
@@ -133,7 +134,7 @@ func (m *manager) handleUpdate(version []byte) {
 func (m *manager) clearFetched() {
 	m.fetchedAt = time.Time{}
 	m.fetched = false
-	m.data = dtypes.QueryDeploymentResponse{}
+	m.data = entities.QueryDeploymentResponse{}
 	m.localLeases = nil
 }
 
@@ -203,7 +204,8 @@ loop:
 			m.data = fetchResult.deployment
 			m.localLeases = fetchResult.leases
 
-			m.log.Info("data received", "version", hex.EncodeToString(m.data.Deployment.Version))
+			//TODO(spheron): check what is this used for
+			// m.log.Info("data received", "version", hex.EncodeToString(m.data.Deployment.Version))
 
 			m.validateRequests()
 			m.emitReceivedEvents()
@@ -248,7 +250,7 @@ func (m *manager) fetchData(ctx context.Context) <-chan runner.Result {
 }
 
 type manifestManagerFetchDataResult struct {
-	deployment dtypes.QueryDeploymentResponse
+	deployment entities.QueryDeploymentResponse
 	leases     []event.LeaseWon
 }
 
@@ -264,16 +266,16 @@ func (m *manager) doFetchData(ctx context.Context) (manifestManagerFetchDataResu
 		return manifestManagerFetchDataResult{}, err
 	}
 
-	groups := make(map[uint32]dtypes.Group)
-	for _, g := range deploymentResponse.GetGroups() {
-		groups[g.ID().GSeq] = g
+	deployments := make(map[uint32]entities.Deployment)
+	for _, d := range deploymentResponse.Deployments {
+		deployments[uint32(d.ID.DSeq)] = d
 	}
 
 	leases := make([]event.LeaseWon, len(leasesResponse.Leases))
 	for i, leaseEntry := range leasesResponse.Leases {
 		lease := leaseEntry.GetLease()
 		leaseID := lease.GetLeaseID()
-		groupForLease, foundGroup := groups[leaseID.GetGSeq()]
+		groupForLease, foundGroup := deployments[leaseID.GetGSeq()]
 		if !foundGroup {
 			return manifestManagerFetchDataResult{}, fmt.Errorf("%w: could not locate group %v ", errNoGroupForLease, leaseID)
 		}
@@ -336,15 +338,15 @@ func (m *manager) emitReceivedEvents() {
 
 	latestManifest := m.manifests[len(m.manifests)-1]
 	m.log.Debug("publishing manifest received", "num-leases", len(m.localLeases))
-	copyOfData := new(dtypes.QueryDeploymentResponse)
+	copyOfData := new(entities.QueryDeploymentResponse)
 	*copyOfData = m.data
 	for _, lease := range m.localLeases {
 		m.log.Debug("publishing manifest received for lease", "lease_id", lease.LeaseID)
 		if err := m.bus.Publish(event.ManifestReceived{
-			LeaseID:    lease.LeaseID,
-			Group:      lease.Group,
-			Manifest:   latestManifest,
-			Deployment: copyOfData,
+			LeaseID:            lease.LeaseID,
+			DeploymentResponse: copyOfData,
+			Manifest:           latestManifest,
+			Deployment:         lease.Deployment,
 		}); err != nil {
 			m.log.Error("publishing event", "err", err, "lease", lease.LeaseID)
 		}

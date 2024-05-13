@@ -258,7 +258,7 @@ func (client *Client) GetBid(ctx context.Context, dseq uint64) (*v1beta4.QueryBi
 	return &response, nil
 }
 
-func (client *Client) GetDeployment(ctx context.Context, dseq uint64) (*dtypes.QueryDeploymentResponse, error) {
+func (client *Client) GetDeployment(ctx context.Context, dseq uint64) (*entities.QueryDeploymentResponse, error) {
 	endpoint := fmt.Sprintf("/deployment/%d", dseq)
 
 	responseData, err := client.SendRequest(ctx, endpoint)
@@ -266,7 +266,7 @@ func (client *Client) GetDeployment(ctx context.Context, dseq uint64) (*dtypes.Q
 		return nil, fmt.Errorf("error sending request JSON: %v", err)
 	}
 
-	var response dtypes.QueryDeploymentResponse
+	var response entities.QueryDeploymentResponse
 	if err := json.Unmarshal(responseData, &response); err != nil {
 		return nil, fmt.Errorf("error decoding JSON: %v", err)
 	}

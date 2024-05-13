@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 	tpubsub "github.com/troian/pubsub"
 
-	provider "github.com/akash-network/akash-api/go/provider/v1"
+	provider "github.com/akash-network/provider/spheron/entities/provider"
 
 	"github.com/akash-network/node/pubsub"
 
