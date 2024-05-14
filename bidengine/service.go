@@ -261,7 +261,7 @@ loop:
 }
 
 func queryExistingOrders(ctx context.Context, session session.Session, spClient *spheron.Client) ([]mtypes.OrderID, error) {
-	res, err := spClient.GetOrders(ctx, "provider")
+	res, err := spClient.GetOrdersByProvider(ctx, "provider")
 
 	if err != nil {
 		session.Log().Error("error querying open orders:", "err", err)

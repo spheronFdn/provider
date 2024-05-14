@@ -24,6 +24,7 @@ import (
 	"github.com/akash-network/provider/event"
 	"github.com/akash-network/provider/session"
 	"github.com/akash-network/provider/spheron"
+	"github.com/akash-network/provider/spheron/entities"
 )
 
 // order manages bidding and general lifecycle handling of an order.
@@ -216,7 +217,6 @@ loop:
 			if bidFound {
 				o.session.Log().Info("found existing bid")
 				bidResponse := queryBid.Value().(*mtypes.QueryBidResponse)
-
 				bid := bidResponse.GetBid()
 				bidState := bid.GetState()
 				if bidState != mtypes.BidOpen {
@@ -406,23 +406,15 @@ loop:
 
 			o.log.Debug("submitting fulfillment", "price", price)
 
-			offer := mtypes.ResourceOfferFromRU(reservation.GetAllocatedResources())
-
 			// TODO(spheron): make provider address dynamic
-			msg := mtypes.MsgCreateBid{
-				Order:          o.orderID,
-				Provider:       "provider",
-				Price:          price,
-				Deposit:        o.cfg.Deposit,
-				ResourcesOffer: offer,
-			}
-			tx, err := o.spClient.GenerateTx(msg, "EventOrderCreated")
-			if err != nil {
-				break loop
+			msg := entities.Bid{
+				OrderID:  o.orderID.DSeq,
+				Bidder:   "provider",
+				BidPrice: price.Amount.BigInt().Uint64(),
 			}
 
 			bidch = runner.Do(func() runner.Result {
-				return runner.NewResult(o.spClient.SendTx(tx))
+				return runner.NewResult(o.spClient.BcClient.CreateBid(ctx, &msg))
 			})
 
 		case result := <-bidch:
@@ -468,33 +460,6 @@ loop:
 				reservationCounter.WithLabelValues("close", metricsutils.FailLabel)
 			} else {
 				reservationCounter.WithLabelValues("close", metricsutils.SuccessLabel)
-			}
-		}
-
-		if bidPlaced {
-			o.log.Debug("closing bid", "order-id", o.orderID)
-
-			msg := mtypes.MsgCloseBid{
-				// BidID: mtypes.MakeBidID(o.orderID, o.session.Provider().Address()),
-				BidID: mtypes.BidID{
-					Owner:    o.orderID.Owner,
-					DSeq:     o.orderID.DSeq,
-					GSeq:     o.orderID.GSeq,
-					OSeq:     o.orderID.OSeq,
-					Provider: "provider",
-				},
-			}
-
-			// _, err := o.session.Client().Tx().Broadcast(ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError())
-
-			_, err := o.spClient.CloseBid(ctx, msg)
-
-			if err != nil {
-				o.log.Error("closing bid", "err", err)
-				bidCounter.WithLabelValues("close", metricsutils.FailLabel).Inc()
-			} else {
-				o.log.Info("bid closed", "order-id", o.orderID)
-				bidCounter.WithLabelValues("close", metricsutils.SuccessLabel).Inc()
 			}
 		}
 	}

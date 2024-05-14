@@ -11,7 +11,6 @@ import (
 	"github.com/boz/go-lifecycle"
 	"github.com/tendermint/tendermint/libs/log"
 
-	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
 	"github.com/akash-network/node/pubsub"
 	"github.com/akash-network/node/util/runner"
 
@@ -153,8 +152,6 @@ loop:
 		<-closech
 	}
 
-	// TODO
-	// Check that we got here
 	m.log.Debug("shutdown complete")
 }
 
@@ -174,17 +171,12 @@ func (m *deploymentMonitor) doCheck(ctx context.Context) (bool, error) {
 
 func (m *deploymentMonitor) runCloseLease(ctx context.Context) <-chan runner.Result {
 	return runner.Do(func() runner.Result {
-		// TODO: retry, timeout
-		msg := mtypes.MsgCloseBid{
-			BidID: m.deployment.LeaseID().BidID(),
-		}
-		// res, err := m.session.Client().Tx().Broadcast(ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError())
-		res, err := m.spClient.CloseBid(ctx, msg)
+		res, err := m.spClient.BcClient.CloseOrder(ctx, m.deployment.LeaseID().DSeq)
 
 		if err != nil {
-			m.log.Error("closing deployment", "err", err)
+			m.log.Error("closing order", "err", err)
 		} else {
-			m.log.Info("bidding on lease closed")
+			m.log.Info("Order closed")
 		}
 		return runner.NewResult(res, err)
 	})

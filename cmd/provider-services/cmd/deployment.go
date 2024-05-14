@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/akash-network/provider/spheron"
@@ -56,12 +57,11 @@ func runDeploymentCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	deployment := entities.TransformGroupToDeployment(groups[0])
+	order := entities.TransformGroupToOrder(groups[0])
 
-	tx, err := spCl.GenerateTx(deployment, "DeploymentCreated")
+	_, err = spCl.BcClient.CreateOrder(context.TODO(), order)
 	if err != nil {
 		return fmt.Errorf("Error while creating Deployment transaction")
 	}
-	spCl.SendTx(tx)
 	return nil
 }

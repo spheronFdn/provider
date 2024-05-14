@@ -103,7 +103,7 @@ func leasesForDeployment(ctx context.Context, cl spheron.Client, flags *pflag.Fl
 		filter.OSeq = val
 	}
 
-	resp, err := cl.Leases(ctx, &mtypes.QueryLeasesRequest{
+	resp, err := cl.GetOrdersWithFilter(ctx, &mtypes.QueryLeasesRequest{
 		Filters: filter,
 	})
 	if err != nil {
