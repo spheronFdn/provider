@@ -19,8 +19,8 @@ func MapOrderCreated(event *OrderMatching.OrderMatchingOrderCreated) *events.Ord
 func MapOrderMatched(event *OrderMatching.OrderMatchingOrderMatched) *events.OrderMatched {
 	// Spheron(TODO): when event is properly written in the contract replace id properly
 	ev := events.OrderMatched{
-		ID:       1,
-		Provider: "provider",
+		ID:       event.OrderId,
+		Provider: event.ProviderAddress.Hex(),
 	}
 	return &ev
 }
@@ -43,10 +43,10 @@ func MapOrderUpdateConfirm(event *requestLogger.RequestLoggerRequestStored) *eve
 	return &ev
 }
 
-func MapOrderClosed(event *requestLogger.RequestLoggerRequestStored) *events.OrderClosed {
+func MapOrderClosed(event *OrderMatching.OrderMatchingOrderClosed) *events.OrderClosed {
 	// Spheron(TODO): when event is properly written in the contract replace id properly
 	ev := events.OrderClosed{
-		ID: 1,
+		ID: event.OrderId,
 	}
 	return &ev
 }

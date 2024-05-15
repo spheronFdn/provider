@@ -5,7 +5,6 @@ import (
 
 	"github.com/akash-network/node/pubsub"
 	"github.com/akash-network/provider/spheron/blockchain/gen/OrderMatching"
-	"github.com/akash-network/provider/spheron/blockchain/gen/requestLogger"
 	"github.com/akash-network/provider/spheron/events"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -30,17 +29,24 @@ func (b *BlockChainClient) subscribeToOrderMatching(ctx context.Context) error {
 	}
 
 	// Create a channel to receive events
-	txch1 := make(chan *OrderMatching.OrderMatchingOrderCreated)
-	txch2 := make(chan *OrderMatching.OrderMatchingOrderMatched)
+	ocreatedch := make(chan *OrderMatching.OrderMatchingOrderCreated)
+	omatchedch := make(chan *OrderMatching.OrderMatchingOrderMatched)
+	oclosedch := make(chan *OrderMatching.OrderMatchingOrderClosed)
+
 	// TODO(spheron): Add handling of order created
 
 	// Subscribe to chain events
-	subscription1, err := contract.WatchOrderCreated(nil, txch1)
+	screated, err := contract.WatchOrderCreated(nil, ocreatedch)
 	if err != nil {
 		return err
 	}
 
-	subscription2, err := contract.WatchOrderMatched(nil, txch2)
+	smatched, err := contract.WatchOrderMatched(nil, omatchedch)
+	if err != nil {
+		return err
+	}
+
+	sclosed, err := contract.WatchOrderClosed(nil, oclosedch)
 	if err != nil {
 		return err
 	}
@@ -48,11 +54,14 @@ func (b *BlockChainClient) subscribeToOrderMatching(ctx context.Context) error {
 	go func() {
 		select {
 		case <-ctx.Done():
-			subscription1.Unsubscribe()
-			subscription2.Unsubscribe()
-		case ev := <-txch1:
+			screated.Unsubscribe()
+			smatched.Unsubscribe()
+			sclosed.Unsubscribe()
+		case ev := <-ocreatedch:
 			b.ChainEventCh <- ev
-		case ev := <-txch2:
+		case ev := <-omatchedch:
+			b.ChainEventCh <- ev
+		case ev := <-oclosedch:
 			b.ChainEventCh <- ev
 		}
 	}()
@@ -66,11 +75,13 @@ loop:
 		case <-ctx.Done():
 			break loop // this thing might break
 		case ev := <-b.ChainEventCh:
-			switch ev.(type) {
+			switch ev := ev.(type) {
 			case *OrderMatching.OrderMatchingOrderCreated:
-				go b.handleOrderCreated(ev.(*OrderMatching.OrderMatchingOrderCreated), bus)
+				go b.handleOrderCreated(ev, bus)
 			case *OrderMatching.OrderMatchingOrderMatched:
-				go b.handleOrderMatched(ev.(*OrderMatching.OrderMatchingOrderMatched), bus)
+				go b.handleOrderMatched(ev, bus)
+			case *OrderMatching.OrderMatchingOrderClosed:
+				go b.handleOrderClosed(ev, bus)
 			}
 		}
 	}
@@ -97,7 +108,7 @@ func (b *BlockChainClient) handleOrderMatched(event *OrderMatching.OrderMatching
 	}
 }
 
-func (b *BlockChainClient) handleOrderClosed(event *requestLogger.RequestLoggerRequestStored, bus pubsub.Bus) {
+func (b *BlockChainClient) handleOrderClosed(event *OrderMatching.OrderMatchingOrderClosed, bus pubsub.Bus) {
 	ev := MapOrderClosed(event)
 	msg1, msg2 := events.MapOrderClosed(ev)
 
