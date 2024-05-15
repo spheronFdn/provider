@@ -75,14 +75,13 @@ func (client *Client) GetDeployment(ctx context.Context, dseq uint64) (*dtypes.Q
 
 func (client *Client) GetGroup(ctx context.Context, dseq uint64) (dtypes.Group, error) {
 
-	_, err := client.BcClient.GetOrderById(ctx, dseq)
+	o, err := client.BcClient.GetOrderById(ctx, dseq)
 	if err != nil {
 		return dtypes.Group{}, fmt.Errorf("error fetching order from chain: %v", err)
 
 	}
 	// transform order into group
-	var group dtypes.Group
-	return group, nil
+	return entities.MapOrderToGroup(o), nil
 }
 
 func (client *Client) CreateBid(ctx context.Context, bid *entities.Bid) (string, error) {

@@ -3,6 +3,8 @@ package entities
 import (
 	"fmt"
 	"strings"
+
+	"github.com/akash-network/akash-api/go/node/types/v1beta3"
 )
 
 type Attributes []Attribute
@@ -52,4 +54,16 @@ func AttributesFromStringSlice(strs []string) Attributes {
 	}
 
 	return newAttrs
+}
+
+func MapAttributes(source Attributes) v1beta3.Attributes {
+	var destination v1beta3.Attributes
+	for _, srcAttr := range source {
+		destAttr := v1beta3.Attribute{
+			Key:   srcAttr.Key,
+			Value: srcAttr.Value,
+		}
+		destination = append(destination, destAttr)
+	}
+	return destination
 }

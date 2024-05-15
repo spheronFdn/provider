@@ -199,3 +199,123 @@ func mapCommonAddressesToStrings(addresses []common.Address) []string {
 	}
 	return strAddresses
 }
+
+func MapOrderToGroup(order *Order) dtypes.Group {
+	// Map OrderState to Group_State
+	var state dtypes.Group_State
+	switch order.State {
+	case OrderOpen:
+		state = dtypes.GroupOpen
+	case OrderActive:
+		state = dtypes.GroupPaused
+	case OrderClosed:
+		state = dtypes.GroupClosed
+	default:
+		state = dtypes.GroupStateInvalid
+	}
+
+	// Map DeploymentSpec to GroupSpec
+	groupSpec := dtypes.GroupSpec{
+		Name: "default", // Adjust as needed
+		Requirements: v1beta3.PlacementRequirements{
+			SignedBy: v1beta3.SignedBy{
+				AllOf: order.Specs.PlacementsRequirement.ProviderWallets, // Assuming these map to AllOf
+				AnyOf: []string{},                                        // Populate as needed
+			},
+			Attributes: MapAttributes(order.Specs.PlacementsRequirement.Attributes),
+		},
+		Resources: mapServiceResourcesToResourceUnits(order.Specs.Resources),
+	}
+
+	// Create the GroupID
+	groupID := dtypes.GroupID{
+		Owner: order.Creator,
+		DSeq:  order.ID,
+		GSeq:  1, // Adjust as needed
+	}
+
+	// Create the Group
+	group := dtypes.Group{
+		GroupID:   groupID,
+		State:     state,
+		GroupSpec: groupSpec,
+		CreatedAt: 0, // Adjust as needed
+	}
+
+	return group
+}
+
+func mapServiceResourcesToResourceUnits(resources ServiceResources) dtypes.ResourceUnits {
+	resourceUnits := make(dtypes.ResourceUnits, len(resources))
+	for i, r := range resources {
+		resourceUnits[i] = dtypes.ResourceUnit{
+			Resources: v1beta3.Resources{
+				ID:        r.Resources.ID,
+				CPU:       mapGroupCPUToOrderCPU(r.Resources.CPU),
+				Memory:    mapGroupMemoryToOrderMemory(r.Resources.Memory),
+				Storage:   mapGroupVolumesToOrderVolumes(r.Resources.Storage),
+				GPU:       mapGroupGPUToOrderGPU(r.Resources.GPU),
+				Endpoints: mapGroupEndpointsToOrderEndpoints(r.Resources.Endpoints),
+			},
+			Count: r.ReplicaCount,
+			Price: cosmostypes.DecCoin{
+				Denom:  "usd", // Adjust as needed
+				Amount: cosmostypes.OneDec(),
+			},
+		}
+	}
+	return resourceUnits
+}
+
+func mapGroupCPUToOrderCPU(cpu *CPU) *v1beta3.CPU {
+	if cpu == nil {
+		return nil
+	}
+	return &v1beta3.CPU{
+		Units:      TransformToResourceValue(cpu.Units),
+		Attributes: MapAttributes(cpu.Attributes),
+	}
+}
+
+func mapGroupMemoryToOrderMemory(mem *Memory) *v1beta3.Memory {
+	if mem == nil {
+		return nil
+	}
+	return &v1beta3.Memory{
+		Quantity:   TransformToResourceValue(mem.Units),
+		Attributes: MapAttributes(mem.Attributes),
+	}
+}
+
+func mapGroupVolumesToOrderVolumes(vols Volumes) v1beta3.Volumes {
+	mappedVols := make(v1beta3.Volumes, len(vols))
+	for i, vol := range vols {
+		mappedVols[i] = v1beta3.Storage{
+			Name:       vol.Name,
+			Quantity:   TransformToResourceValue(vol.Units),
+			Attributes: MapAttributes(vol.Attributes),
+		}
+	}
+	return mappedVols
+}
+
+func mapGroupGPUToOrderGPU(gpu *GPU) *v1beta3.GPU {
+	if gpu == nil {
+		return nil
+	}
+	return &v1beta3.GPU{
+		Units:      TransformToResourceValue(gpu.Units),
+		Attributes: MapAttributes(gpu.Attributes),
+	}
+}
+
+func mapGroupEndpointsToOrderEndpoints(eps Endpoints) v1beta3.Endpoints {
+	mappedEps := make(v1beta3.Endpoints, len(eps))
+	for i, ep := range eps {
+		mappedEps[i] = v1beta3.Endpoint{
+			Kind:           v1beta3.Endpoint_Kind(ep.Kind),
+			SequenceNumber: ep.SequenceNumber,
+		}
+	}
+	return mappedEps
+}
