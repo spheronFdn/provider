@@ -11,7 +11,7 @@ func MapOrderCreated(event *OrderMatching.OrderMatchingOrderCreated) *events.Ord
 	// Spheron(TODO): when event is properly written in the contract replace id properly
 	// fetch from sc order and populate additional details
 	ev := events.OrderCreated{
-		ID: 1,
+		ID: event.OrderId,
 	}
 	return &ev
 }
