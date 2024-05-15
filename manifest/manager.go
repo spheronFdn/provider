@@ -259,7 +259,7 @@ func (m *manager) doFetchData(ctx context.Context) (manifestManagerFetchDataResu
 	if err != nil {
 		return manifestManagerFetchDataResult{}, err
 	}
-	leasesResponse, err := m.spClient.GetLeases(subctx, m.daddr.DSeq)
+	leasesResponse, err := m.spClient.GetOrder(subctx, m.daddr.DSeq)
 	if err != nil {
 		return manifestManagerFetchDataResult{}, err
 	}

@@ -1,40 +1,41 @@
 package entities
 
 import (
+	"math/big"
+
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
+	types "github.com/akash-network/akash-api/go/node/types/v1beta3"
+	cosmostypes "github.com/cosmos/cosmos-sdk/types"
+
 	"github.com/akash-network/akash-api/go/node/types/v1beta3"
 )
 
-func TransformGroupToDeployment(gs *dtypes.GroupSpec) *Deployment {
+func TransformGroupToOrder(gs *dtypes.GroupSpec) *Order {
 	// Map the GroupSpec to a DeploymentSpec
 	ds := DeploymentSpec{
-		Name:         gs.Name,
-		Requirements: mapPlacementRequirements(gs.Requirements),
-		Resources:    mapResourceUnits(gs.Resources),
+		PlacementsRequirement: mapPlacementRequirements(gs.Requirements),
+		Resources:             mapResourceUnits(gs.Resources),
 	}
 
 	// Return a Deployment with a placeholder DeploymentID and default state
-	return &Deployment{
-		ID:    DeploymentID{}, // Adjust as necessary
-		State: DeploymentOpen,
-		Spec:  ds,
+	return &Order{
+		ID:    0, // Adjust as necessary
+		State: OrderOpen,
+		Specs: ds,
 	}
 }
 
 // Helper function to map PlacementRequirements from repo 1 to repo 2
 func mapPlacementRequirements(pr v1beta3.PlacementRequirements) PlacementRequirements {
 	return PlacementRequirements{
-		SignedBy:   mapSignedBy(pr.SignedBy),
-		Attributes: mapAttributes(pr.Attributes),
+		ProviderWallets: mapProviderWallets(pr.SignedBy),
+		Attributes:      mapAttributes(pr.Attributes),
 	}
 }
 
 // Helper function to map SignedBy from repo 1 to repo 2
-func mapSignedBy(sb v1beta3.SignedBy) SignedBy {
-	return SignedBy{
-		AllOf: sb.AllOf,
-		AnyOf: sb.AnyOf,
-	}
+func mapProviderWallets(sb v1beta3.SignedBy) []string {
+	return sb.AnyOf
 }
 
 // Helper function to map Attributes from repo 1 to repo 2
@@ -50,13 +51,12 @@ func mapAttributes(attrs v1beta3.Attributes) Attributes {
 }
 
 // Helper function to map ResourceUnits from repo 1 to repo 2
-func mapResourceUnits(rus dtypes.ResourceUnits) ResourceUnits {
-	mappedRus := make(ResourceUnits, len(rus))
+func mapResourceUnits(rus dtypes.ResourceUnits) ServiceResources {
+	mappedRus := make(ServiceResources, len(rus))
 	for i, ru := range rus {
-		mappedRus[i] = ResourceUnit{
-			Resources: mapResources(ru.Resources),
-			Count:     ru.Count,
-			Price:     ru.Price.Amount.BigInt().Uint64(),
+		mappedRus[i] = ServiceResource{
+			Resources:    mapResources(ru.Resources),
+			ReplicaCount: ru.Count,
 		}
 	}
 	return mappedRus
@@ -100,7 +100,7 @@ func mapMemory(mem *v1beta3.Memory) *Memory {
 func mapVolumes(vols v1beta3.Volumes) Volumes {
 	mappedVols := make(Volumes, len(vols))
 	for i, vol := range vols {
-		mappedVols[i] = Storage{
+		mappedVols[i] = Volume{
 			Name:       vol.Name,
 			Units:      vol.Quantity.Value(),
 			Attributes: mapAttributes(vol.Attributes),
@@ -125,9 +125,17 @@ func mapEndpoints(eps v1beta3.Endpoints) Endpoints {
 	mappedEps := make(Endpoints, len(eps))
 	for i, ep := range eps {
 		mappedEps[i] = Endpoint{
-			Kind:           int32(ep.Kind),
+			Kind:           EndpointKind(ep.Kind),
 			SequenceNumber: ep.SequenceNumber,
 		}
 	}
 	return mappedEps
+}
+
+func TransformToResourceValue(value uint64) types.ResourceValue {
+	bigIntValue := new(big.Int).SetUint64(value)
+	resourceInt := cosmostypes.NewIntFromBigInt(bigIntValue)
+	return types.ResourceValue{
+		Val: resourceInt,
+	}
 }

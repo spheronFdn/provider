@@ -1,3 +1,3 @@
-[submodule "spheron/protocol-contracts"]
-	path = spheron/protocol-contracts
-	url = https://github.com/spheronFdn/protocol-contracts.git
+[submodule "spheron/blockchain/protocol-contracts"]
+	path = spheron/blockchain/protocol-contracts
+	url = https://github.com/spheronFdn/protocol-contracts

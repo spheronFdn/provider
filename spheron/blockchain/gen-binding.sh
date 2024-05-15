@@ -8,4 +8,6 @@ abigen  --bin=build/RequestLogger.bin --abi=build/RequestLogger.abi --pkg=reques
 mkdir -p gen/OrderMatching
 solc --bin --abi  protocol-contracts/contracts/OrderMatching.sol -o build
 abigen  --bin=build/OrderMatching.bin --abi=build/OrderMatching.abi --pkg=OrderMatching --out=gen/OrderMatching/OrderMatching.go
-
+mkdir -p gen/TokenRegistry
+solc --bin --abi  protocol-contracts/contracts/TokenRegistery.sol -o build
+abigen  --bin=build/TokenRegistry.bin --abi=build/TokenRegistry.abi --pkg=TokenRegistry --out=gen/TokenRegistry/TokenRegistry.go

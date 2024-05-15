@@ -2,9 +2,10 @@ package cmd
 
 import (
 	"context"
+	"math/big"
+
 	"github.com/akash-network/provider/spheron"
 	"github.com/spf13/cobra"
-	"math/big"
 )
 
 const (
@@ -61,7 +62,7 @@ func doAddNodeProvider(cmd *cobra.Command, args []string) error {
 	cmd.Printf("region: %s, wallet address: %s, token: %v \n", region, cctx.Key.Address, paymentToken)
 
 	spheronClient := spheron.NewClientWithContext(cctx)
-	tx, err := spheronClient.AddNodeProvider(context.Background(), region, paymentToken)
+	tx, err := spheronClient.BcClient.AddNodeProvider(context.Background(), region, paymentToken)
 	if err != nil {
 		return err
 	}
@@ -97,7 +98,7 @@ func doRemoveNodeProvider(cmd *cobra.Command, args []string) error {
 	}
 
 	spheronClient := spheron.NewClientWithContext(cctx)
-	tx, err := spheronClient.RemoveNodeProvider(context.Background(), big.NewInt(validatorId))
+	tx, err := spheronClient.BcClient.RemoveNodeProvider(context.Background(), big.NewInt(validatorId))
 	if err != nil {
 		return err
 	}

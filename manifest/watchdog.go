@@ -69,20 +69,7 @@ func (wd *watchdog) run() {
 		wd.log.Info("watchdog closing bid")
 
 		runch = runner.Do(func() runner.Result {
-			msg := types.MsgCloseBid{
-				BidID: types.BidID{
-					Owner:    wd.leaseID.OrderID().Owner,
-					DSeq:     wd.leaseID.OrderID().DSeq,
-					GSeq:     wd.leaseID.OrderID().GSeq,
-					OSeq:     wd.leaseID.OrderID().OSeq,
-					Provider: "provider",
-				},
-				// BidID: types.MakeBidID(wd.leaseID.OrderID(), wd.sess.Provider().Address()),
-			}
-
-			// return runner.NewResult(wd.sess.Client().Tx().Broadcast(wd.ctx, []sdk.Msg{msg}, aclient.WithResultCodeAsError()))
-
-			return runner.NewResult(wd.sess.Client().CloseBid(ctx, msg))
+			return runner.NewResult(wd.sess.Client().BcClient.CloseOrder(ctx, wd.leaseID.OrderID().DSeq))
 		})
 	case err = <-wd.lc.ShutdownRequest():
 	}
