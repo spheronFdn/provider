@@ -3,9 +3,9 @@ package entities
 type Order struct {
 	ID         uint64
 	Region     string
-	Uptime     int64
-	Reputation int64
-	Slashes    int64
+	Uptime     uint64
+	Reputation uint64
+	Slashes    uint64
 	MaxPrice   uint64
 	Token      string
 	Creator    string

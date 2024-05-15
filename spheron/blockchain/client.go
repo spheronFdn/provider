@@ -114,7 +114,10 @@ func (b *BlockChainClient) CreateOrder(ctx context.Context, order *entities.Orde
 		return "", err
 	}
 
-	tx, err := instance.CreateOrder(auth, order.Region, "", big.NewInt(0), big.NewInt(0), big.NewInt(int64(order.MaxPrice)))
+	tx, err := instance.CreateOrder(auth, order.Region, order.Uptime, order.Reputation, order.Slashes,
+		big.NewInt(int64(order.MaxPrice)), order.Token,
+		stringSliceToAddressSlice(order.Specs.PlacementsRequirement.ProviderWallets), 1, "test",
+		getMatchingResourceAttribute(order.Specs.Resources[0].Resources))
 	if err != nil {
 		return "", err
 	}
