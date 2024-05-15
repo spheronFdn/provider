@@ -123,20 +123,29 @@ func (b *BlockChainClient) CreateOrder(ctx context.Context, order *entities.Orde
 }
 
 func (b *BlockChainClient) GetOrderById(ctx context.Context, id uint64) (*entities.Order, error) {
-	// TODO(spheron): interact with blockchain
 
-	return &entities.Order{
-		ID:         id,
-		Region:     "us-east",
-		Uptime:     0,
-		Reputation: 0,
-		Slashes:    0,
-		MaxPrice:   10,
-		Token:      "USDC",
-		Creator:    "owner",
-		State:      entities.OrderActive,
-		Specs:      entities.DeploymentSpec{},
-	}, nil
+	contractAddress := common.HexToAddress(orderMatchingContract)
+
+	instance, err := OrderMatching.NewOrderMatching(contractAddress, b.EthClient)
+	if err != nil {
+		return nil, err
+	}
+
+	opts := &bind.CallOpts{
+		From: b.Key.Address,
+	}
+
+	o, err := instance.GetOrderById(opts, id)
+	if err != nil {
+		return nil, err
+	}
+
+	order, err := entities.MapOrderMatchingOrderToOrder(o)
+	if err != nil {
+		return nil, err
+	}
+
+	return &order, nil
 }
 
 func (b *BlockChainClient) GetOrdersByProvider(ctx context.Context, provider string) ([]*entities.Order, error) {

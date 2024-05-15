@@ -37,3 +37,19 @@ func (attrs *Attributes) FromStringSlice(strs []string) error {
 	*attrs = newAttrs
 	return nil
 }
+
+func AttributesFromStringSlice(strs []string) Attributes {
+	var newAttrs Attributes
+	for _, str := range strs {
+		parts := strings.SplitN(str, "=", 2)
+		if len(parts) != 2 {
+			return nil
+		}
+		newAttrs = append(newAttrs, Attribute{
+			Key:   parts[0],
+			Value: parts[1],
+		})
+	}
+
+	return newAttrs
+}
