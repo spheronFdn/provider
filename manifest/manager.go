@@ -260,30 +260,34 @@ func (m *manager) doFetchData(ctx context.Context) (manifestManagerFetchDataResu
 	if err != nil {
 		return manifestManagerFetchDataResult{}, err
 	}
-	leasesResponse, err := m.spClient.GetOrder(subctx, m.daddr.DSeq)
-	if err != nil {
-		return manifestManagerFetchDataResult{}, err
-	}
+	// leasesResponse, err := m.spClient.GetLeases(subctx, m.daddr.DSeq)
+	// if err != nil {
+	// 	return manifestManagerFetchDataResult{}, err
+	// }
 
 	groups := make(map[uint32]dtypes.Group)
 	groups[group.ID().GSeq] = group
 
-	leases := make([]event.LeaseWon, len(leasesResponse.Leases))
-	for i, leaseEntry := range leasesResponse.Leases {
-		lease := leaseEntry.GetLease()
-		leaseID := lease.GetLeaseID()
-		groupForLease, foundGroup := groups[leaseID.GetGSeq()]
-		if !foundGroup {
-			return manifestManagerFetchDataResult{}, fmt.Errorf("%w: could not locate group %v ", errNoGroupForLease, leaseID)
-		}
-		ev := event.LeaseWon{
-			LeaseID: leaseID,
-			Group:   &groupForLease,
-			Price:   lease.GetPrice(),
-		}
-
-		leases[i] = ev
+	leases := make([]event.LeaseWon, 1)
+	// for i, leaseEntry := range leasesResponse.Leases {
+	// lease := leaseEntry.GetLease()
+	// leaseID := lease.GetLeaseID()
+	// groupForLease, foundGroup := groups[leaseID.GetGSeq()]
+	// if !foundGroup {
+	// 	return manifestManagerFetchDataResult{}, fmt.Errorf("%w: could not locate group %v ", errNoGroupForLease, leaseID)
+	// }
+	ev := event.LeaseWon{
+		LeaseID: mtypes.LeaseID{
+			Owner: "owner",
+			DSeq:  group.ID().DSeq,
+			OSeq:  1,
+			GSeq:  1,
+		},
+		Group: &group,
 	}
+
+	leases[1] = ev
+	// }
 
 	return manifestManagerFetchDataResult{
 		group:  group,

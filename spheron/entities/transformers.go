@@ -8,6 +8,7 @@ import (
 	"github.com/akash-network/provider/spheron/blockchain/gen/OrderMatching"
 
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
+	"github.com/akash-network/akash-api/go/node/market/v1beta4"
 	types "github.com/akash-network/akash-api/go/node/types/v1beta3"
 	cosmostypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -200,18 +201,18 @@ func mapCommonAddressesToStrings(addresses []common.Address) []string {
 	return strAddresses
 }
 
-func MapOrderToGroup(order *Order) dtypes.Group {
+func MapOrderToV1Order(order *Order) v1beta4.Order {
 	// Map OrderState to Group_State
-	var state dtypes.Group_State
+	var state v1beta4.Order_State
 	switch order.State {
 	case OrderOpen:
-		state = dtypes.GroupOpen
+		state = v1beta4.OrderOpen
 	case OrderActive:
-		state = dtypes.GroupPaused
+		state = v1beta4.OrderActive
 	case OrderClosed:
-		state = dtypes.GroupClosed
+		state = v1beta4.OrderClosed
 	default:
-		state = dtypes.GroupStateInvalid
+		state = v1beta4.OrderStateInvalid
 	}
 
 	// Map DeploymentSpec to GroupSpec
@@ -228,17 +229,18 @@ func MapOrderToGroup(order *Order) dtypes.Group {
 	}
 
 	// Create the GroupID
-	groupID := dtypes.GroupID{
+	orderID := v1beta4.OrderID{
 		Owner: order.Creator,
 		DSeq:  order.ID,
 		GSeq:  1, // Adjust as needed
+		OSeq:  1,
 	}
 
 	// Create the Group
-	group := dtypes.Group{
-		GroupID:   groupID,
+	group := v1beta4.Order{
+		OrderID:   orderID,
 		State:     state,
-		GroupSpec: groupSpec,
+		Spec:      groupSpec,
 		CreatedAt: 0, // Adjust as needed
 	}
 
@@ -318,4 +320,49 @@ func mapGroupEndpointsToOrderEndpoints(eps Endpoints) v1beta3.Endpoints {
 		}
 	}
 	return mappedEps
+}
+
+func MapOrderToGroup(order *Order) dtypes.Group {
+	// Map OrderState to Group_State
+	var state dtypes.Group_State
+	switch order.State {
+	case OrderOpen:
+		state = dtypes.GroupOpen
+	case OrderActive:
+		state = dtypes.GroupPaused
+	case OrderClosed:
+		state = dtypes.GroupClosed
+	default:
+		state = dtypes.GroupStateInvalid
+	}
+
+	// Map DeploymentSpec to GroupSpec
+	groupSpec := dtypes.GroupSpec{
+		Name: "default", // Adjust as needed
+		Requirements: v1beta3.PlacementRequirements{
+			SignedBy: v1beta3.SignedBy{
+				AllOf: order.Specs.PlacementsRequirement.ProviderWallets, // Assuming these map to AllOf
+				AnyOf: []string{},                                        // Populate as needed
+			},
+			Attributes: MapAttributes(order.Specs.PlacementsRequirement.Attributes),
+		},
+		Resources: mapServiceResourcesToResourceUnits(order.Specs.Resources),
+	}
+
+	// Create the GroupID
+	groupID := dtypes.GroupID{
+		Owner: order.Creator,
+		DSeq:  order.ID,
+		GSeq:  1, // Adjust as needed
+	}
+
+	// Create the Group
+	group := dtypes.Group{
+		GroupID:   groupID,
+		State:     state,
+		GroupSpec: groupSpec,
+		CreatedAt: 0, // Adjust as needed
+	}
+
+	return group
 }

@@ -1,8 +1,6 @@
 package event
 
 import (
-	sdk "github.com/cosmos/cosmos-sdk/types"
-
 	mani "github.com/akash-network/akash-api/go/manifest/v2beta2"
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
@@ -12,7 +10,6 @@ import (
 type LeaseWon struct {
 	LeaseID mtypes.LeaseID
 	Group   *dtypes.Group
-	Price   sdk.DecCoin
 }
 
 // ManifestReceived stores leaseID, manifest received, deployment and group details

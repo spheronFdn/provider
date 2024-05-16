@@ -533,7 +533,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 	key := spheron.ReadKey(viper.GetString(FlagFrom), viper.GetString(FlagKeySecret))
 
 	if key == nil {
-		fmt.Errorf("Wallet not provided")
+		return errors.New("Wallet not provided")
 	}
 
 	spConfig := spheron.ClientConfig{

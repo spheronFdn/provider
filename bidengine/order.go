@@ -264,7 +264,6 @@ loop:
 				if err := o.bus.Publish(event.LeaseWon{
 					LeaseID: ev.ID,
 					Group:   group,
-					Price:   ev.Price,
 				}); err != nil {
 					o.log.Error("failed to publish to event queue", err)
 				}
