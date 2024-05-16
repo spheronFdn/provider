@@ -1,9 +1,6 @@
 package cmd
 
 import (
-	"github.com/akash-network/provider/operator"
-	"github.com/akash-network/provider/operator/hostname"
-	"github.com/akash-network/provider/operator/ip"
 	"github.com/akash-network/provider/spheron"
 	"github.com/akash-network/provider/version"
 	"github.com/spf13/cobra"
@@ -12,8 +9,8 @@ import (
 func NewRootCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
-		Use:               "provider-services",
-		Short:             "Provider services commands",
+		Use:               "spheron",
+		Short:             "Spheron network commands",
 		SilenceUsage:      true,
 		PersistentPreRunE: GetInitContextPreRunE(),
 	}
@@ -23,25 +20,24 @@ func NewRootCmd() *cobra.Command {
 	cmd.AddCommand(DeploymentCmd())
 	cmd.AddCommand(SendManifestCmd())
 
+	cmd.AddCommand(ProviderCmd()) // register provider
+	cmd.AddCommand(RunCmd())      // run provider
+
 	// not main commands
 	cmd.AddCommand(statusCmd())
 	cmd.AddCommand(leaseStatusCmd())
 	cmd.AddCommand(leaseEventsCmd())
 	cmd.AddCommand(leaseLogsCmd())
 	cmd.AddCommand(serviceStatusCmd())
-	cmd.AddCommand(RunCmd())
 	cmd.AddCommand(LeaseShellCmd())
-	cmd.AddCommand(hostname.Cmd())
-	cmd.AddCommand(ip.Cmd())
-	cmd.AddCommand(clusterNSCmd())
+	// cmd.AddCommand(hostname.Cmd())
+	// cmd.AddCommand(ip.Cmd())
 	cmd.AddCommand(SDL2ManifestCmd())
-	cmd.AddCommand(MigrateHostnamesCmd())
-	cmd.AddCommand(MigrateEndpointsCmd())
-	cmd.AddCommand(ProviderCmd())
+	// cmd.AddCommand(MigrateHostnamesCmd())
+	// cmd.AddCommand(MigrateEndpointsCmd())
 
-	cmd.AddCommand(operator.OperatorsCmd())
-	cmd.AddCommand(operator.ToolsCmd())
-
+	// cmd.AddCommand(operator.OperatorsCmd())
+	// cmd.AddCommand(operator.ToolsCmd())
 	cmd.AddCommand(version.NewVersionCommand())
 	return cmd
 }

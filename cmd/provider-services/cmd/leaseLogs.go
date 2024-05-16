@@ -16,8 +16,8 @@ import (
 
 func leaseLogsCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "lease-logs",
-		Short:        "get lease logs",
+		Use:          "deployment-logs",
+		Short:        "get deployment logs",
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {

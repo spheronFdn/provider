@@ -11,8 +11,8 @@ import (
 
 func KeysCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "keys2",
-		Short: "Manage keys for spheron-provider",
+		Use:   "keys",
+		Short: "Manage keys",
 	}
 
 	cmd.AddCommand(

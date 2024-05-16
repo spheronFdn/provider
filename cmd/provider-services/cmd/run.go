@@ -112,11 +112,11 @@ var (
 	errInvalidConfig = errors.New("Invalid configuration")
 )
 
-// RunCmd launches the Akash Provider service
+// RunCmd launches Provider service
 func RunCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "run",
-		Short:        "run akash provider",
+		Short:        "run provider",
 		SilenceUsage: true,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			leaseFundsMonInterval := viper.GetDuration(FlagLeaseFundsMonitorInterval)

@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/akash-network/provider/spheron"
 	"github.com/akash-network/provider/spheron/entities"
@@ -18,6 +19,7 @@ func DeploymentCmd() *cobra.Command {
 
 	cmd.AddCommand(
 		AddDeploymentCommand(),
+		CloseDeploymentCommand(),
 	)
 	return cmd
 }
@@ -62,6 +64,43 @@ func runDeploymentCmd(cmd *cobra.Command, args []string) error {
 	_, err = spCl.BcClient.CreateOrder(context.TODO(), order)
 	if err != nil {
 		return fmt.Errorf("Error while creating Deployment transaction")
+	}
+	return nil
+}
+
+func CloseDeploymentCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "close [id]",
+		Short: "Close",
+		Args:  cobra.ExactArgs(0),
+		RunE:  runCloseDeploymentCmd,
+	}
+
+	addCmdFlags(cmd)
+	return cmd
+}
+
+func runCloseDeploymentCmd(cmd *cobra.Command, args []string) error {
+	ctx := cmd.Context()
+	dseq, err := strconv.ParseUint(args[0], 10, 64)
+	if err != nil {
+		return fmt.Errorf("Invalid dseq: %v", err)
+	}
+
+	cctx, err := spheron.GetClientTxContext(cmd)
+	if err != nil {
+		return err
+	}
+	if cctx.Key == nil {
+		return fmt.Errorf("Transaction can not be created. Wallet needs to be injected")
+	}
+
+	spCl := spheron.NewClientWithContext(cctx)
+
+	_, err = spCl.BcClient.CloseOrder(ctx, dseq)
+
+	if err != nil {
+		return fmt.Errorf("Error while closing Deployment")
 	}
 	return nil
 }
