@@ -86,24 +86,17 @@ func (b *BlockChainClient) RemoveNodeProvider(ctx context.Context, id *big.Int) 
 	return tx.Hash().Hex(), nil
 }
 
-
-
 func (b *BlockChainClient) GetProviderByAddress(ctx context.Context, address common.Address) (*entities.Provider, error) {
 	opts := &bind.CallOpts{
 		From: b.Key.Address, //TODO(spheron): check on this
 	}
-	_, region, paymentAccepted, isActive, err := b.NodeProviderRegistry.GetNodeProviderByAddress(opts, address )
+	_, region, paymentAccepted, isActive, err := b.NodeProviderRegistry.GetNodeProviderByAddress(opts, address)
 	if err != nil {
 		return nil, err
 	}
+
 	// TODO:(spheron) replace domain mock for provider
-	return &entities.Provider{
-		 WalletAddress: address.Hex(),
-		 Region: region,
-		 IsActive: isActive,
-		 Tokens: paymentAccepted,
-		 Domain: "https://localhost:8443",
-	}, nil
+	return MapChainProviderToProvider(address.Hex(), region, paymentAccepted, isActive, "https://localhost:8443"), nil
 }
 
 // Order contract
@@ -121,12 +114,12 @@ func (b *BlockChainClient) GetOrderById(ctx context.Context, id uint64) (*entiti
 		From: b.Key.Address, //TODO(spheron): check on this
 	}
 
-	o, err := b.OrderMatching.GetOrderById(opts, id)
+	o, err := b.OrderMatching.Orders(opts, id)
 	if err != nil {
 		return nil, err
 	}
 
-	order, err := entities.MapOrderMatchingOrderToOrder(o)
+	order, err := MapOrderMatchingOrderToOrder(o)
 	if err != nil {
 		return nil, err
 	}
@@ -146,12 +139,12 @@ func (b *BlockChainClient) GetOrdersByProvider(ctx context.Context, provider str
 	}
 
 	for _, id := range ids {
-		o, err := b.OrderMatching.GetOrderById(opts, id)
+		o, err := b.OrderMatching.Orders(opts, id)
 		if err != nil {
 			return nil, err
 		}
 
-		order, err := entities.MapOrderMatchingOrderToOrder(o)
+		order, err := MapOrderMatchingOrderToOrder(o)
 		if err != nil {
 			return nil, err
 		}

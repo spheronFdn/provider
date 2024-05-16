@@ -24,8 +24,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	mparams "github.com/akash-network/akash-api/go/node/market/v1beta4"
-	ptypes "github.com/akash-network/akash-api/go/node/provider/v1beta3"
-	types_v1beta3 "github.com/akash-network/akash-api/go/node/types/v1beta3"
 
 	"github.com/akash-network/node/cmd/common"
 	"github.com/akash-network/node/pubsub"
@@ -605,13 +603,12 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 	// 	return err
 	// }
 
-
-	pinfo, err  := spClient.GetProviderByAddress(ctx, spClient.Context.Key.Address.Hex())
+	pinfo, err := spClient.GetProviderByAddress(ctx, spClient.Context.Key.Address.Hex())
 	if err != nil {
 		logger.Error("unable to setup provider ", err)
 		panic("failed to start provider")
 	}
-	
+
 	fmt.Printf("pinfo %+v\n", pinfo)
 
 	// k8s client creation
@@ -643,7 +640,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	// TODO(spheron): Take block height from our chain !
 	currentBlockHeight := time.Now().Unix() // Add block height later
-	session := session.New(logger, &pinfo, spClient, currentBlockHeight)
+	session := session.New(logger, pinfo, spClient, currentBlockHeight)
 
 	// TODO(spheron): We can also call spheronClient.start() here if needed in future
 	// if err := cctx.Client.Start(); err != nil {

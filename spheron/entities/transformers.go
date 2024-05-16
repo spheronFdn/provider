@@ -1,12 +1,8 @@
 package entities
 
 import (
-	"encoding/json"
-	"fmt"
 	"math/big"
 
-	"github.com/akash-network/provider/spheron/blockchain/gen/OrderMatching"
-	
 	ptypes "github.com/akash-network/akash-api/go/node/provider/v1beta3"
 
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
@@ -146,53 +142,6 @@ func TransformToResourceValue(value uint64) types.ResourceValue {
 	return types.ResourceValue{
 		Val: resourceInt,
 	}
-}
-
-func MapOrderMatchingOrderToOrder(initialOrder OrderMatching.) (Order, error) {
-	// Unmarshal the Resources JSON string
-	var resources ServiceResources
-	err := json.Unmarshal([]byte(initialOrder.Specs.Resources), &resources)
-	if err != nil {
-		return Order{}, fmt.Errorf("failed to unmarshal resources: %w", err)
-	}
-
-	// Map the order state
-	var state OrderState
-	switch initialOrder.State {
-	case 1:
-		state = OrderOpen
-	case 2:
-		state = OrderActive
-	case 3:
-		state = OrderClosed
-	default:
-		state = OrderInvalid
-	}
-
-	// Create the DeploymentSpec
-	deploymentSpec := DeploymentSpec{
-		PlacementsRequirement: PlacementRequirements{
-			ProviderWallets: mapCommonAddressesToStrings(initialOrder.Specs.PlacementRequirement.ProviderWallets),
-			Attributes:      AttributesFromStringSlice(initialOrder.Specs.PlacementRequirement.Attributes),
-		},
-		Resources: resources,
-	}
-
-	// Map the initial order to the new order
-	order := Order{
-		ID:         initialOrder.Id,
-		Region:     initialOrder.Region,
-		Uptime:     initialOrder.Uptime,
-		Reputation: initialOrder.Reputation,
-		Slashes:    initialOrder.Slashes,
-		MaxPrice:   initialOrder.MaxPrice.Uint64(),
-		Token:      initialOrder.Token,
-		Creator:    initialOrder.Creator.Hex(),
-		State:      state,
-		Specs:      deploymentSpec,
-	}
-
-	return order, nil
 }
 
 func mapCommonAddressesToStrings(addresses []common.Address) []string {
@@ -369,8 +318,7 @@ func MapOrderToGroup(order *Order) dtypes.Group {
 	return group
 }
 
-
-func MapProviderToV3Provider(provider *Provider) (*ptypes.Provider){
+func MapProviderToV3Provider(provider *Provider) *ptypes.Provider {
 	// TODO(spheron) remove this mock data
 	p := &ptypes.Provider{
 		Owner:      "provider",
