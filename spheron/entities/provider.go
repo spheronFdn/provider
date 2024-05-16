@@ -3,6 +3,8 @@ package entities
 type Provider struct {
 	WalletAddress string
 	Region        string
-	Token         string
+	Tokens        []string
 	Attributes    Attributes
+	IsActive      bool
+	Domain        string
 }

@@ -605,11 +605,13 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 	// 	return err
 	// }
 
-	pinfo := ptypes.Provider{
-		Owner:      "provider",
-		HostURI:    "https://localhost:8443",
-		Attributes: types_v1beta3.Attributes{types_v1beta3.Attribute{Key: "region", Value: "us-west"}, types_v1beta3.Attribute{Key: "capabilities/storage/1/persistent", Value: "true"}},
+
+	pinfo, err  := spClient.GetProviderByAddress(ctx, spClient.Context.Key.Address.Hex())
+	if err != nil {
+		logger.Error("unable to setup provider ", err)
+		panic("failed to start provider")
 	}
+	
 	fmt.Printf("pinfo %+v\n", pinfo)
 
 	// k8s client creation

@@ -6,6 +6,8 @@ import (
 	"math/big"
 
 	"github.com/akash-network/provider/spheron/blockchain/gen/OrderMatching"
+	
+	ptypes "github.com/akash-network/akash-api/go/node/provider/v1beta3"
 
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	"github.com/akash-network/akash-api/go/node/market/v1beta4"
@@ -146,7 +148,7 @@ func TransformToResourceValue(value uint64) types.ResourceValue {
 	}
 }
 
-func MapOrderMatchingOrderToOrder(initialOrder OrderMatching.OrderMatchingInitialOrder) (Order, error) {
+func MapOrderMatchingOrderToOrder(initialOrder OrderMatching.) (Order, error) {
 	// Unmarshal the Resources JSON string
 	var resources ServiceResources
 	err := json.Unmarshal([]byte(initialOrder.Specs.Resources), &resources)
@@ -365,4 +367,15 @@ func MapOrderToGroup(order *Order) dtypes.Group {
 	}
 
 	return group
+}
+
+
+func MapProviderToV3Provider(provider *Provider) (*ptypes.Provider){
+	// TODO(spheron) remove this mock data
+	p := &ptypes.Provider{
+		Owner:      "provider",
+		HostURI:    provider.Domain,
+		Attributes: types.Attributes{types.Attribute{Key: "region", Value: "us-west"}, types.Attribute{Key: "capabilities/storage/1/persistent", Value: "true"}},
+	}
+	return p
 }

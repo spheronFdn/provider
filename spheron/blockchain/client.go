@@ -70,7 +70,6 @@ func NewBlockChainClient(key *keystore.Key) (*BlockChainClient, error) {
 }
 
 // Provider contract
-
 func (b *BlockChainClient) AddNodeProvider(ctx context.Context, region string, paymentTokens []string) (string, error) {
 	tx, err := b.NodeProviderRegistry.AddNodeProvider(b.Auth, region, b.Key.Address, paymentTokens)
 	if err != nil {
@@ -85,6 +84,26 @@ func (b *BlockChainClient) RemoveNodeProvider(ctx context.Context, id *big.Int) 
 		return "", err
 	}
 	return tx.Hash().Hex(), nil
+}
+
+
+
+func (b *BlockChainClient) GetProviderByAddress(ctx context.Context, address common.Address) (*entities.Provider, error) {
+	opts := &bind.CallOpts{
+		From: b.Key.Address, //TODO(spheron): check on this
+	}
+	_, region, paymentAccepted, isActive, err := b.NodeProviderRegistry.GetNodeProviderByAddress(opts, address )
+	if err != nil {
+		return nil, err
+	}
+	// TODO:(spheron) replace domain mock for provider
+	return &entities.Provider{
+		 WalletAddress: address.Hex(),
+		 Region: region,
+		 IsActive: isActive,
+		 Tokens: paymentAccepted,
+		 Domain: "https://localhost:8443",
+	}, nil
 }
 
 // Order contract

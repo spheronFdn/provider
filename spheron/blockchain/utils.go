@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/akash-network/provider/spheron/blockchain/gen/OrderMatching"
 	"github.com/akash-network/provider/spheron/entities"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -17,21 +16,15 @@ func stringSliceToAddressSlice(stringSlice []string) []common.Address {
 	return addressSlice
 }
 
-func getOrderSpec(spec entities.DeploymentSpec) OrderMatching.OrderMatchingSpecs {
+func getOrderSpec(spec entities.DeploymentSpec) string {
 
-	resourcesString, err := json.Marshal(spec.Resources)
+	jsonString, err := json.Marshal(spec)
 	if err != nil {
 		fmt.Println("Error marshalling object:", err)
-		return OrderMatching.OrderMatchingSpecs{}
+		return ""
 	}
 
-	return OrderMatching.OrderMatchingSpecs{
-		Resources: string(resourcesString),
-		PlacementRequirement: OrderMatching.OrderMatchingPlacementRequirement{
-			ProviderWallets: StringsToAddresses(spec.PlacementsRequirement.ProviderWallets),
-			Attributes:      spec.PlacementsRequirement.Attributes.ToStringSlice(),
-		},
-	}
+	return string(jsonString)
 }
 
 // StringToAddress converts a string to common.Address

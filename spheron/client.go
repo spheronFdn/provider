@@ -8,12 +8,15 @@ import (
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 
 	"github.com/akash-network/akash-api/go/node/market/v1beta4"
+	ptypes "github.com/akash-network/akash-api/go/node/provider/v1beta3"
+
 	"google.golang.org/grpc"
 
 	"github.com/akash-network/provider/spheron/blockchain"
 	"github.com/akash-network/provider/spheron/entities"
 	"github.com/akash-network/provider/tools/fromctx"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/tendermint/tendermint/libs/log"
 )
 
@@ -124,4 +127,15 @@ func (client *Client) GetOrdersByProvider(ctx context.Context, provider string) 
 func (client *Client) GetOrdersWithFilter(ctx context.Context, in *v1beta4.QueryLeasesRequest, opts ...grpc.CallOption) (*v1beta4.QueryLeasesResponse, error) {
 	// TODO(spheron): fetch this information from our chain
 	return nil, nil
+}
+
+func (client *Client) GetProviderByAddress(ctx context.Context, address string) (*ptypes.Provider, error){
+
+	provider, err := client.BcClient.GetProviderByAddress(ctx, common.HexToAddress(address))
+	if err != nil {
+		return nil, err
+	}
+	p := entities.MapProviderToV3Provider(provider)
+
+	return p, nil
 }
