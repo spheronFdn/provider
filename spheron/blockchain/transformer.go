@@ -14,7 +14,7 @@ import (
 func MapOrderCreated(event *OrderMatching.OrderMatchingOrderCreated) *events.OrderCreated {
 	ev := events.OrderCreated{
 		ID:      event.OrderId,
-		Creator: "",
+		Creator: event.Creator.Hex(),
 	}
 	return &ev
 }
@@ -23,7 +23,7 @@ func MapOrderMatched(event *OrderMatching.OrderMatchingOrderMatched) *events.Ord
 	ev := events.OrderMatched{
 		ID:       event.OrderId,
 		Provider: event.ProviderAddress.Hex(),
-		Creator:  "",
+		Creator:  event.Creator.Hex(),
 	}
 	return &ev
 }
@@ -31,8 +31,8 @@ func MapOrderMatched(event *OrderMatching.OrderMatchingOrderMatched) *events.Ord
 func MapOrderClosed(event *OrderMatching.OrderMatchingOrderClosed) *events.OrderClosed {
 	ev := events.OrderClosed{
 		ID:       event.OrderId,
-		Provider: "",
-		Creator:  "",
+		Provider: event.ProviderAddress.Hex(),
+		Creator:  event.TenantAddress.Hex(),
 	}
 	return &ev
 }
@@ -90,6 +90,7 @@ func MapChainOrderToOrder(initialOrder *struct {
 
 func MapChainLeaseToLease(lease *struct {
 	ProviderAddress common.Address
+	TenantAddress   common.Address
 	ProviderId      *big.Int
 	AcceptedPrice   *big.Int
 	StartBlock      *big.Int
@@ -113,10 +114,11 @@ func MapChainLeaseToLease(lease *struct {
 
 	// Map the initial order to the new order
 	l := entities.Lease{
-		OrderID:         orderId,
-		ProviderAddress: lease.ProviderAddress.Hex(),
-		AcceptedPrice:   lease.AcceptedPrice.Uint64(),
-		State:           state,
+		OrderID:       orderId,
+		Creator:       lease.TenantAddress.Hex(),
+		Provider:      lease.ProviderAddress.Hex(),
+		AcceptedPrice: lease.AcceptedPrice.Uint64(),
+		State:         state,
 	}
 	return &l, nil
 }

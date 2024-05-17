@@ -71,7 +71,7 @@ func doSendManifest(cmd *cobra.Command, sdlpath string) error {
 	if err != nil {
 		return err
 	}
-	gclient, err := gwrest.NewClient(*spClient, lease.ProviderAddress, authToken)
+	gclient, err := gwrest.NewClient(*spClient, lease.Provider, authToken)
 	if err != nil {
 		return err
 	}
