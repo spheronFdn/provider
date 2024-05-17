@@ -14,7 +14,7 @@ import (
 	"github.com/akash-network/akash-api/go/node/types/v1beta3"
 )
 
-func TransformGroupToOrder(gs *dtypes.GroupSpec, id string) *Order {
+func TransformGroupToOrder(gs *dtypes.GroupSpec) *Order {
 	// Map the GroupSpec to a DeploymentSpec
 	ds := DeploymentSpec{
 		PlacementsRequirement: mapPlacementRequirements(gs.Requirements),
@@ -22,10 +22,19 @@ func TransformGroupToOrder(gs *dtypes.GroupSpec, id string) *Order {
 	}
 
 	// Return a Deployment with a placeholder DeploymentID and default state
+	reg, found := gs.Requirements.Attributes.Find("region").AsString()
+	if !found {
+		reg = "us-west"
+	}
 	return &Order{
-		ID:    0, // Adjust as necessary
-		State: OrderOpen,
-		Specs: ds,
+		Region:     reg,
+		Uptime:     0,
+		Reputation: 0,
+		Slashes:    0,
+		MaxPrice:   gs.Price().Amount.BigInt().Uint64(),
+		Token:      gs.Price().Denom,
+		State:      OrderOpen,
+		Specs:      ds,
 	}
 }
 
@@ -321,7 +330,7 @@ func MapOrderToGroup(order *Order) dtypes.Group {
 func MapProviderToV3Provider(provider *Provider) *ptypes.Provider {
 	// TODO(spheron) remove this mock data
 	p := &ptypes.Provider{
-		Owner:      "provider",
+		Owner:      provider.WalletAddress,
 		HostURI:    provider.Domain,
 		Attributes: types.Attributes{types.Attribute{Key: "region", Value: "us-west"}, types.Attribute{Key: "capabilities/storage/1/persistent", Value: "true"}},
 	}

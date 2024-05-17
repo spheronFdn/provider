@@ -40,14 +40,9 @@ var (
 
 func addCmdFlags(cmd *cobra.Command) {
 	cmd.Flags().String(FlagProvider, "", "provider")
-	cmd.Flags().Uint64(FlagDSeq, 0, "deployment sequence")
 	cmd.Flags().String(flags.FlagHome, app.DefaultHome, "the application home directory")
 	cmd.Flags().String(flags.FlagFrom, "", "Wallet path")
 	cmd.Flags().String(FlagKeySecret, "", "Wallet key secret")
-
-	if err := cmd.MarkFlagRequired(FlagDSeq); err != nil {
-		panic(err.Error())
-	}
 
 	if err := cmd.MarkFlagRequired(flags.FlagFrom); err != nil {
 		panic(err.Error())

@@ -729,7 +729,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	operatorWaiter := waiter.NewOperatorWaiter(cmd.Context(), logger, waitClients...)
 
-	service, err := provider.NewService(ctx, spClient, "provider", session, bus, cclient, operatorWaiter, config)
+	service, err := provider.NewService(ctx, spClient, pinfo.Owner, session, bus, cclient, operatorWaiter, config)
 	if err != nil {
 		return err
 	}
@@ -741,7 +741,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		logger,
 		service,
 		gwaddr,
-		"provider",
+		pinfo.Owner,
 		[]tls.Certificate{tlsCert},
 		clusterSettings,
 	)

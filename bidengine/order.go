@@ -248,7 +248,7 @@ loop:
 				}
 
 				// check winning provider
-				if ev.ID.Provider != "provider" {
+				if ev.ID.Provider != o.spClient.Context.Key.Address.Hex() {
 					orderCompleteCounter.WithLabelValues("lease-lost").Inc()
 					o.log.Info("lease lost", "lease", ev.ID)
 					bidPlaced = false // Lease lost, network closes bid
@@ -408,8 +408,8 @@ loop:
 			// TODO(spheron): make provider address dynamic
 			msg := entities.Bid{
 				OrderID:  o.orderID.DSeq,
-				Bidder:   "provider",
-				BidPrice: price.Amount.BigInt().Uint64(),
+				Bidder:   o.spClient.Context.Key.Address.Hex(),
+				BidPrice: 1, // price.Amount.BigInt().Uint64(),
 			}
 
 			bidch = runner.Do(func() runner.Result {

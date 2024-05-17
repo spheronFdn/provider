@@ -260,25 +260,15 @@ func (m *manager) doFetchData(ctx context.Context) (manifestManagerFetchDataResu
 	if err != nil {
 		return manifestManagerFetchDataResult{}, err
 	}
-	// leasesResponse, err := m.spClient.GetLeases(subctx, m.daddr.DSeq)
-	// if err != nil {
-	// 	return manifestManagerFetchDataResult{}, err
-	// }
 
 	groups := make(map[uint32]dtypes.Group)
 	groups[group.ID().GSeq] = group
 
 	leases := make([]event.LeaseWon, 1)
-	// for i, leaseEntry := range leasesResponse.Leases {
-	// lease := leaseEntry.GetLease()
-	// leaseID := lease.GetLeaseID()
-	// groupForLease, foundGroup := groups[leaseID.GetGSeq()]
-	// if !foundGroup {
-	// 	return manifestManagerFetchDataResult{}, fmt.Errorf("%w: could not locate group %v ", errNoGroupForLease, leaseID)
-	// }
+
 	ev := event.LeaseWon{
 		LeaseID: mtypes.LeaseID{
-			Owner: "owner",
+			Owner: group.ID().Owner,
 			DSeq:  group.ID().DSeq,
 			OSeq:  1,
 			GSeq:  1,
@@ -287,7 +277,6 @@ func (m *manager) doFetchData(ctx context.Context) (manifestManagerFetchDataResu
 	}
 
 	leases[1] = ev
-	// }
 
 	return manifestManagerFetchDataResult{
 		group:  group,
@@ -434,14 +423,7 @@ func (m *manager) validateRequest(req manifestRequest) error {
 
 func (m *manager) checkHostnamesForManifest(requestManifest maniv2beta2.Manifest, groupNames []string) error {
 	// Check if the hostnames are available. Do not block forever
-
-	// TODO(spheron): extract owner address from deployment, don't hardcode it
-	// ownerAddr, err := m.data.GetDeployment().DeploymentID.GetOwnerAddress()
-	// if err != nil {
-	// 	return err
-	// }
-
-	ownerAddr := "owner"
+	ownerAddr := m.data.GetGroupID().Owner
 
 	allHostnames := make([]string, 0)
 

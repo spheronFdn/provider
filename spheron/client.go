@@ -129,7 +129,7 @@ func (client *Client) GetOrdersWithFilter(ctx context.Context, in *v1beta4.Query
 	return nil, nil
 }
 
-func (client *Client) GetProviderByAddress(ctx context.Context, address string) (*ptypes.Provider, error){
+func (client *Client) GetProviderByAddress(ctx context.Context, address string) (*ptypes.Provider, error) {
 
 	provider, err := client.BcClient.GetProviderByAddress(ctx, common.HexToAddress(address))
 	if err != nil {

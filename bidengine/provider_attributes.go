@@ -317,15 +317,16 @@ func (pass *providerAttrSignatureService) fetch(ctx context.Context, auditor str
 		Auditor: auditor,
 	}
 
-	pass.session.Log().Info("fetching provider auditor attributes", "auditor", req.Auditor, "provider", req.Owner)
-	// TODO(spheron): fetch provider attributes from chain
+	pass.session.Log().Info("fetching provider auditor attributes", "auditor", req.Auditor, pass.session.Client().Context.Key.Address.Hex(), req.Owner)
+	pinfo, err := pass.session.Client().GetProviderByAddress(ctx, pass.session.Client().Context.Key.Address.Hex())
+	if err != nil {
+		pass.session.Log().Error("unable to setup provider ", err)
+		return auditedAttrResult{}
+	}
 	value := []atypes.Provider{
 		{
-			Owner: "provider",
-			Attributes: types.Attributes{
-				types.Attribute{Key: "region", Value: "us-west"},
-				types.Attribute{Key: "capabilities/storage/1/persistent", Value: "true"},
-			},
+			Owner:      pinfo.Owner,
+			Attributes: pinfo.Attributes,
 		},
 	}
 

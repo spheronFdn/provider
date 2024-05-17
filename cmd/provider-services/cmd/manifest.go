@@ -11,6 +11,7 @@ import (
 
 	gwrest "github.com/akash-network/provider/gateway/rest"
 	"github.com/akash-network/provider/spheron"
+	"github.com/akash-network/provider/spheron/entities"
 )
 
 var (
@@ -37,6 +38,7 @@ func SendManifestCmd() *cobra.Command {
 }
 
 func doSendManifest(cmd *cobra.Command, sdlpath string) error {
+	ctx := context.TODO()
 	sdl, err := sdl.ReadFile(sdlpath)
 	if err != nil {
 		return err
@@ -53,17 +55,23 @@ func doSendManifest(cmd *cobra.Command, sdlpath string) error {
 		return err
 	}
 	cctx, err := spheron.GetClientTxContext(cmd)
-	cl := spheron.NewClientWithContext(cctx)
+	spClient := spheron.NewClientWithContext(cctx)
 
 	submitFailed := false
 
-	// TODO(spheron) extract provider address from chain for lease via dseq
-	// TODO(spheron) take tls.Certificate when instanciating newClient (gclient, err := gwrest.NewClient(cl, prov, []tls.Certificate{cert}))
-	authToken, err := spheron.CreateAuthorizationToken(context.TODO(), &cctx)
+	lease, err := spClient.BcClient.GetLeaseById(ctx, dseq)
 	if err != nil {
 		return err
 	}
-	gclient, err := gwrest.NewClient(*cl, "provider", authToken)
+	if lease.State != entities.OrderActive {
+		return errors.New("Lease is not active")
+	}
+
+	authToken, err := spheron.CreateAuthorizationToken(ctx, &cctx)
+	if err != nil {
+		return err
+	}
+	gclient, err := gwrest.NewClient(*spClient, lease.ProviderAddress, authToken)
 	if err != nil {
 		return err
 	}

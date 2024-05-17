@@ -28,8 +28,8 @@ profiles:
         region: us-west
       pricing:
         web:
-          denom: uakt
-          amount: 1000
+          denom: USDTT
+          amount: 10
 
 deployment:
   web:

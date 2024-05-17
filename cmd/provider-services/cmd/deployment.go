@@ -3,11 +3,13 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"strconv"
 
 	"github.com/akash-network/provider/spheron"
 	"github.com/akash-network/provider/spheron/entities"
 	"github.com/akash-network/provider/spheron/sdl"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
 
@@ -20,6 +22,7 @@ func DeploymentCmd() *cobra.Command {
 	cmd.AddCommand(
 		AddDeploymentCommand(),
 		CloseDeploymentCommand(),
+		MatchDeploymentCommand(),
 	)
 	return cmd
 }
@@ -48,8 +51,6 @@ func runDeploymentCmd(cmd *cobra.Command, args []string) error {
 
 	spCl := spheron.NewClientWithContext(cctx)
 
-	dseq, _ := cmd.Flags().GetString(FlagDSeq)
-
 	sdlManifest, err := sdl.ReadFile(args[0])
 	if err != nil {
 		return err
@@ -61,7 +62,7 @@ func runDeploymentCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	order := entities.TransformGroupToOrder(groups[0], dseq)
+	order := entities.TransformGroupToOrder(groups[0])
 
 	_, err = spCl.BcClient.CreateOrder(context.TODO(), order)
 	if err != nil {
@@ -72,19 +73,23 @@ func runDeploymentCmd(cmd *cobra.Command, args []string) error {
 
 func CloseDeploymentCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "close [id]",
+		Use:   "close",
 		Short: "Close",
 		Args:  cobra.ExactArgs(0),
 		RunE:  runCloseDeploymentCmd,
 	}
-
 	addCmdFlags(cmd)
+	cmd.Flags().Uint64(FlagDSeq, 0, "deployment sequence")
+
+	if err := cmd.MarkFlagRequired(FlagDSeq); err != nil {
+		panic(err.Error())
+	}
 	return cmd
 }
 
 func runCloseDeploymentCmd(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
-	dseq, err := strconv.ParseUint(args[0], 10, 64)
+	dseq, err := dseqFromFlags(cmd.Flags())
 	if err != nil {
 		return fmt.Errorf("Invalid dseq: %v", err)
 	}
@@ -109,22 +114,33 @@ func runCloseDeploymentCmd(cmd *cobra.Command, args []string) error {
 
 func MatchDeploymentCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "deployment-match [id] [provider] [agreedPrice]",
-		Short: "Close",
-		Args:  cobra.ExactArgs(0),
+		Use:   "match [provider] [agreedPrice]",
+		Short: "Match deployment with provider",
+		Args:  cobra.ExactArgs(2),
 		RunE:  runMatchDeploymentCmd,
 	}
-
 	addCmdFlags(cmd)
+	cmd.Flags().Uint64(FlagDSeq, 0, "deployment sequence")
+
+	if err := cmd.MarkFlagRequired(FlagDSeq); err != nil {
+		panic(err.Error())
+	}
+
 	return cmd
 }
 
 func runMatchDeploymentCmd(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
-	dseq, err := strconv.ParseUint(args[0], 10, 64)
+	dseq, err := dseqFromFlags(cmd.Flags())
 	if err != nil {
 		return fmt.Errorf("Invalid dseq: %v", err)
 	}
+	provider := args[0]
+	ap, err := strconv.ParseInt(args[1], 10, 64)
+	if err != nil {
+		return fmt.Errorf("Invalid agreedPrice: %v", err)
+	}
+	agreedPrice := big.NewInt(ap)
 
 	cctx, err := spheron.GetClientTxContext(cmd)
 	if err != nil {
@@ -136,10 +152,10 @@ func runMatchDeploymentCmd(cmd *cobra.Command, args []string) error {
 
 	spCl := spheron.NewClientWithContext(cctx)
 
-	_, err = spCl.BcClient.CloseOrder(ctx, dseq)
+	_, err = spCl.BcClient.MatchOrder(ctx, dseq, common.HexToAddress(provider), agreedPrice)
 
 	if err != nil {
-		return fmt.Errorf("Error while closing Deployment")
+		return fmt.Errorf("Error while matching Deployment %+v", err)
 	}
 	return nil
 }

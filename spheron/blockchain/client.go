@@ -111,7 +111,7 @@ func (b *BlockChainClient) CreateOrder(ctx context.Context, order *entities.Orde
 
 func (b *BlockChainClient) GetOrderById(ctx context.Context, id uint64) (*entities.Order, error) {
 	opts := &bind.CallOpts{
-		From: b.Key.Address, //TODO(spheron): check on this
+		From: b.Key.Address,
 	}
 
 	o, err := b.OrderMatching.Orders(opts, id)
@@ -119,18 +119,36 @@ func (b *BlockChainClient) GetOrderById(ctx context.Context, id uint64) (*entiti
 		return nil, err
 	}
 
-	order, err := MapOrderMatchingOrderToOrder(o)
+	order, err := MapChainOrderToOrder(&o)
 	if err != nil {
 		return nil, err
 	}
 
-	return &order, nil
+	return order, nil
+}
+
+func (b *BlockChainClient) GetLeaseById(ctx context.Context, id uint64) (*entities.Lease, error) {
+	opts := &bind.CallOpts{
+		From: b.Key.Address,
+	}
+
+	l, err := b.OrderMatching.Leases(opts, id)
+	if err != nil {
+		return nil, err
+	}
+
+	lease, err := MapChainLeaseToLease(&l, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return lease, nil
 }
 
 func (b *BlockChainClient) GetOrdersByProvider(ctx context.Context, provider string) ([]*entities.Order, error) {
 	orders := []*entities.Order{}
 	opts := &bind.CallOpts{
-		From: b.Key.Address, //TODO(spheron): check on this
+		From: b.Key.Address,
 	}
 
 	ids, err := b.OrderMatching.GetOrderByProvider(opts, common.HexToAddress(provider))
@@ -144,11 +162,11 @@ func (b *BlockChainClient) GetOrdersByProvider(ctx context.Context, provider str
 			return nil, err
 		}
 
-		order, err := MapOrderMatchingOrderToOrder(o)
+		order, err := MapChainOrderToOrder(&o)
 		if err != nil {
 			return nil, err
 		}
-		orders = append(orders, &order)
+		orders = append(orders, order)
 	}
 
 	return orders, nil
@@ -182,7 +200,6 @@ func (b *BlockChainClient) CreateBid(ctx context.Context, bid *entities.Bid) (st
 
 func (b *BlockChainClient) GetBid(ctx context.Context, id uint64) (*entities.Bid, error) {
 	// TODO(spheron): interact with blockchain
-
 	return &entities.Bid{
 		OrderID:  id,
 		BidPrice: 1,

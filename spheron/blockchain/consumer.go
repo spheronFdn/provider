@@ -16,7 +16,7 @@ func (b *BlockChainClient) SubscribeEvents(ctx context.Context, bus pubsub.Bus) 
 		return err
 	}
 
-	go b.handleChainEvents(ctx, bus)
+	go b.run(ctx, bus)
 	return nil
 }
 
@@ -52,23 +52,27 @@ func (b *BlockChainClient) subscribeToOrderMatching(ctx context.Context) error {
 	}
 
 	go func() {
-		select {
-		case <-ctx.Done():
-			screated.Unsubscribe()
-			smatched.Unsubscribe()
-			sclosed.Unsubscribe()
-		case ev := <-ocreatedch:
-			b.ChainEventCh <- ev
-		case ev := <-omatchedch:
-			b.ChainEventCh <- ev
-		case ev := <-oclosedch:
-			b.ChainEventCh <- ev
+	loop:
+		for {
+			select {
+			case <-ctx.Done():
+				screated.Unsubscribe()
+				smatched.Unsubscribe()
+				sclosed.Unsubscribe()
+				break loop
+			case ev := <-ocreatedch:
+				b.ChainEventCh <- ev
+			case ev := <-omatchedch:
+				b.ChainEventCh <- ev
+			case ev := <-oclosedch:
+				b.ChainEventCh <- ev
+			}
 		}
 	}()
 	return nil
 }
 
-func (b *BlockChainClient) handleChainEvents(ctx context.Context, bus pubsub.Bus) {
+func (b *BlockChainClient) run(ctx context.Context, bus pubsub.Bus) {
 loop:
 	for {
 		select {
