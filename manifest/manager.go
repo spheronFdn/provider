@@ -54,6 +54,7 @@ func newManager(h *service, daddr dtypes.DeploymentID) *manager {
 		lc:              lifecycle.New(),
 		config:          h.config,
 		hostnameService: h.hostnameService,
+		spClient:        h.spClient,
 	}
 
 	go m.lc.WatchChannel(h.lc.ShuttingDown())
@@ -90,7 +91,7 @@ type manager struct {
 	lc  lifecycle.Lifecycle
 
 	hostnameService clustertypes.HostnameServiceClient
-	spClient        spheron.Client
+	spClient        *spheron.Client
 }
 
 func (m *manager) stop() {
@@ -276,7 +277,7 @@ func (m *manager) doFetchData(ctx context.Context) (manifestManagerFetchDataResu
 		Group: &group,
 	}
 
-	leases[1] = ev
+	leases[0] = ev
 
 	return manifestManagerFetchDataResult{
 		group:  group,

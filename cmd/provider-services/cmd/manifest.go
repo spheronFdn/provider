@@ -11,7 +11,6 @@ import (
 
 	gwrest "github.com/akash-network/provider/gateway/rest"
 	"github.com/akash-network/provider/spheron"
-	"github.com/akash-network/provider/spheron/entities"
 )
 
 var (
@@ -33,7 +32,11 @@ func SendManifestCmd() *cobra.Command {
 
 	addCmdFlags(cmd)
 	cmd.Flags().StringP(flagOutput, "o", outputText, "output format text|json|yaml. default text")
+	cmd.Flags().Uint64(FlagDSeq, 0, "deployment sequence")
 
+	if err := cmd.MarkFlagRequired(FlagDSeq); err != nil {
+		panic(err.Error())
+	}
 	return cmd
 }
 
@@ -63,9 +66,10 @@ func doSendManifest(cmd *cobra.Command, sdlpath string) error {
 	if err != nil {
 		return err
 	}
-	if lease.State != entities.OrderActive {
-		return errors.New("Lease is not active")
-	}
+	fmt.Printf("Lease %v+", lease)
+	// if lease.State != entities.OrderActive {
+	// 	return errors.New("Lease is not active")
+	// }
 
 	authToken, err := spheron.CreateAuthorizationToken(ctx, &cctx)
 	if err != nil {
