@@ -162,6 +162,14 @@ func (b *BlockChainClient) CloseOrder(ctx context.Context, id uint64) (string, e
 	return tx.Hash().String(), nil
 }
 
+func (b *BlockChainClient) MatchOrder(ctx context.Context, orderId uint64, providerAddress common.Address, acceptedPrice *big.Int) (string, error) {
+	tx, err := b.OrderMatching.MatchOrder(b.Auth, orderId, providerAddress, acceptedPrice)
+	if err != nil {
+		return "", err
+	}
+	return tx.Hash().String(), nil
+}
+
 func (b *BlockChainClient) CreateBid(ctx context.Context, bid *entities.Bid) (string, error) {
 
 	tx, err := b.OrderMatching.PlaceBid(b.Auth, bid.OrderID, big.NewInt(int64(bid.BidPrice)))

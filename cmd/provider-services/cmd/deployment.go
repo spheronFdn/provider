@@ -48,6 +48,8 @@ func runDeploymentCmd(cmd *cobra.Command, args []string) error {
 
 	spCl := spheron.NewClientWithContext(cctx)
 
+	dseq, _ := cmd.Flags().GetString(FlagDSeq)
+
 	sdlManifest, err := sdl.ReadFile(args[0])
 	if err != nil {
 		return err
@@ -59,7 +61,7 @@ func runDeploymentCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	order := entities.TransformGroupToOrder(groups[0])
+	order := entities.TransformGroupToOrder(groups[0], dseq)
 
 	_, err = spCl.BcClient.CreateOrder(context.TODO(), order)
 	if err != nil {
@@ -81,6 +83,43 @@ func CloseDeploymentCommand() *cobra.Command {
 }
 
 func runCloseDeploymentCmd(cmd *cobra.Command, args []string) error {
+	ctx := cmd.Context()
+	dseq, err := strconv.ParseUint(args[0], 10, 64)
+	if err != nil {
+		return fmt.Errorf("Invalid dseq: %v", err)
+	}
+
+	cctx, err := spheron.GetClientTxContext(cmd)
+	if err != nil {
+		return err
+	}
+	if cctx.Key == nil {
+		return fmt.Errorf("Transaction can not be created. Wallet needs to be injected")
+	}
+
+	spCl := spheron.NewClientWithContext(cctx)
+
+	_, err = spCl.BcClient.CloseOrder(ctx, dseq)
+
+	if err != nil {
+		return fmt.Errorf("Error while closing Deployment")
+	}
+	return nil
+}
+
+func MatchDeploymentCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "deployment-match [id] [provider] [agreedPrice]",
+		Short: "Close",
+		Args:  cobra.ExactArgs(0),
+		RunE:  runMatchDeploymentCmd,
+	}
+
+	addCmdFlags(cmd)
+	return cmd
+}
+
+func runMatchDeploymentCmd(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 	dseq, err := strconv.ParseUint(args[0], 10, 64)
 	if err != nil {

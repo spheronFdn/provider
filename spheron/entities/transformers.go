@@ -14,7 +14,7 @@ import (
 	"github.com/akash-network/akash-api/go/node/types/v1beta3"
 )
 
-func TransformGroupToOrder(gs *dtypes.GroupSpec) *Order {
+func TransformGroupToOrder(gs *dtypes.GroupSpec, id string) *Order {
 	// Map the GroupSpec to a DeploymentSpec
 	ds := DeploymentSpec{
 		PlacementsRequirement: mapPlacementRequirements(gs.Requirements),
