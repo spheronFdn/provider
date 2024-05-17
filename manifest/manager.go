@@ -269,10 +269,11 @@ func (m *manager) doFetchData(ctx context.Context) (manifestManagerFetchDataResu
 
 	ev := event.LeaseWon{
 		LeaseID: mtypes.LeaseID{
-			Owner: group.ID().Owner,
-			DSeq:  group.ID().DSeq,
-			OSeq:  1,
-			GSeq:  1,
+			Owner:    group.ID().Owner,
+			DSeq:     group.ID().DSeq,
+			OSeq:     1,
+			GSeq:     1,
+			Provider: m.spClient.Context.Key.Address.Hex(),
 		},
 		Group: &group,
 	}
