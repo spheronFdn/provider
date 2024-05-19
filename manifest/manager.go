@@ -54,6 +54,7 @@ func newManager(h *service, daddr dtypes.DeploymentID) *manager {
 		lc:              lifecycle.New(),
 		config:          h.config,
 		hostnameService: h.hostnameService,
+		spClient:        h.spClient,
 	}
 
 	go m.lc.WatchChannel(h.lc.ShuttingDown())
@@ -74,7 +75,7 @@ type manager struct {
 	manifestch chan manifestRequest
 	updatech   chan []byte
 
-	data            dtypes.QueryDeploymentResponse
+	data            dtypes.Group
 	requests        []manifestRequest
 	pendingRequests []manifestRequest
 	manifests       []*maniv2beta2.Manifest
@@ -90,7 +91,7 @@ type manager struct {
 	lc  lifecycle.Lifecycle
 
 	hostnameService clustertypes.HostnameServiceClient
-	spClient        spheron.Client
+	spClient        *spheron.Client
 }
 
 func (m *manager) stop() {
@@ -133,7 +134,7 @@ func (m *manager) handleUpdate(version []byte) {
 func (m *manager) clearFetched() {
 	m.fetchedAt = time.Time{}
 	m.fetched = false
-	m.data = dtypes.QueryDeploymentResponse{}
+	m.data = dtypes.Group{}
 	m.localLeases = nil
 }
 
@@ -200,10 +201,11 @@ loop:
 			fetchResult := result.Value().(manifestManagerFetchDataResult)
 			m.fetched = true
 			m.fetchedAt = time.Now()
-			m.data = fetchResult.deployment
+			m.data = fetchResult.group
 			m.localLeases = fetchResult.leases
 
-			m.log.Info("data received", "version", hex.EncodeToString(m.data.Deployment.Version))
+			// TODO(spheron): check if this breaks anything
+			// m.log.Info("data received", "version", hex.EncodeToString(m.data.Deployment.Version))
 
 			m.validateRequests()
 			m.emitReceivedEvents()
@@ -248,47 +250,39 @@ func (m *manager) fetchData(ctx context.Context) <-chan runner.Result {
 }
 
 type manifestManagerFetchDataResult struct {
-	deployment dtypes.QueryDeploymentResponse
-	leases     []event.LeaseWon
+	group  dtypes.Group
+	leases []event.LeaseWon
 }
 
 func (m *manager) doFetchData(ctx context.Context) (manifestManagerFetchDataResult, error) {
 	subctx, cancel := context.WithTimeout(ctx, m.config.RPCQueryTimeout)
 	defer cancel()
-	deploymentResponse, err := m.spClient.GetDeployment(subctx, m.daddr.DSeq)
-	if err != nil {
-		return manifestManagerFetchDataResult{}, err
-	}
-	leasesResponse, err := m.spClient.GetOrder(subctx, m.daddr.DSeq)
+	group, err := m.spClient.GetGroup(subctx, m.daddr.DSeq)
 	if err != nil {
 		return manifestManagerFetchDataResult{}, err
 	}
 
 	groups := make(map[uint32]dtypes.Group)
-	for _, g := range deploymentResponse.GetGroups() {
-		groups[g.ID().GSeq] = g
+	groups[group.ID().GSeq] = group
+
+	leases := make([]event.LeaseWon, 1)
+
+	ev := event.LeaseWon{
+		LeaseID: mtypes.LeaseID{
+			Owner:    group.ID().Owner,
+			DSeq:     group.ID().DSeq,
+			OSeq:     1,
+			GSeq:     1,
+			Provider: m.spClient.Context.Key.Address.Hex(),
+		},
+		Group: &group,
 	}
 
-	leases := make([]event.LeaseWon, len(leasesResponse.Leases))
-	for i, leaseEntry := range leasesResponse.Leases {
-		lease := leaseEntry.GetLease()
-		leaseID := lease.GetLeaseID()
-		groupForLease, foundGroup := groups[leaseID.GetGSeq()]
-		if !foundGroup {
-			return manifestManagerFetchDataResult{}, fmt.Errorf("%w: could not locate group %v ", errNoGroupForLease, leaseID)
-		}
-		ev := event.LeaseWon{
-			LeaseID: leaseID,
-			Group:   &groupForLease,
-			Price:   lease.GetPrice(),
-		}
-
-		leases[i] = ev
-	}
+	leases[0] = ev
 
 	return manifestManagerFetchDataResult{
-		deployment: *deploymentResponse,
-		leases:     leases,
+		group:  group,
+		leases: leases,
 	}, nil
 }
 
@@ -336,15 +330,13 @@ func (m *manager) emitReceivedEvents() {
 
 	latestManifest := m.manifests[len(m.manifests)-1]
 	m.log.Debug("publishing manifest received", "num-leases", len(m.localLeases))
-	copyOfData := new(dtypes.QueryDeploymentResponse)
-	*copyOfData = m.data
+
 	for _, lease := range m.localLeases {
 		m.log.Debug("publishing manifest received for lease", "lease_id", lease.LeaseID)
 		if err := m.bus.Publish(event.ManifestReceived{
-			LeaseID:    lease.LeaseID,
-			Group:      lease.Group,
-			Manifest:   latestManifest,
-			Deployment: copyOfData,
+			LeaseID:  lease.LeaseID,
+			Group:    lease.Group,
+			Manifest: latestManifest,
 		}); err != nil {
 			m.log.Error("publishing event", "err", err, "lease", lease.LeaseID)
 		}
@@ -433,14 +425,7 @@ func (m *manager) validateRequest(req manifestRequest) error {
 
 func (m *manager) checkHostnamesForManifest(requestManifest maniv2beta2.Manifest, groupNames []string) error {
 	// Check if the hostnames are available. Do not block forever
-
-	// TODO(spheron): extract owner address from deployment, don't hardcode it
-	// ownerAddr, err := m.data.GetDeployment().DeploymentID.GetOwnerAddress()
-	// if err != nil {
-	// 	return err
-	// }
-
-	ownerAddr := "owner"
+	ownerAddr := m.data.GetGroupID().Owner
 
 	allHostnames := make([]string, 0)
 

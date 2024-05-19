@@ -16,8 +16,8 @@ import (
 
 func leaseLogsCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "lease-logs",
-		Short:        "get lease logs",
+		Use:          "deployment-logs",
+		Short:        "get deployment logs",
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -47,8 +47,7 @@ func doLeaseLogs(cmd *cobra.Command) error {
 	}
 
 	leases, err := leasesForDeployment(cmd.Context(), *cl, cmd.Flags(), dtypes.DeploymentID{
-		//TODO(spheron) get this value from context or env
-		Owner: cctx.Key.Address.Hex(), //"owner"
+		Owner: cctx.Key.Address.Hex(),
 		DSeq:  dseq,
 	})
 	if err != nil {

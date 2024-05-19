@@ -1,62 +1,134 @@
 package blockchain
 
 import (
+	"encoding/json"
+	"fmt"
+	"math/big"
+
 	"github.com/akash-network/provider/spheron/blockchain/gen/OrderMatching"
-	"github.com/akash-network/provider/spheron/blockchain/gen/requestLogger"
 	"github.com/akash-network/provider/spheron/entities"
 	"github.com/akash-network/provider/spheron/events"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 func MapOrderCreated(event *OrderMatching.OrderMatchingOrderCreated) *events.OrderCreated {
-	// Spheron(TODO): when event is properly written in the contract replace id properly
-	// fetch from sc order and populate additional details
 	ev := events.OrderCreated{
-		ID: 1,
+		ID:      event.OrderId,
+		Creator: event.Creator.Hex(),
 	}
 	return &ev
 }
 
 func MapOrderMatched(event *OrderMatching.OrderMatchingOrderMatched) *events.OrderMatched {
-	// Spheron(TODO): when event is properly written in the contract replace id properly
 	ev := events.OrderMatched{
-		ID:       1,
-		Provider: "provider",
+		ID:       event.OrderId,
+		Provider: event.ProviderAddress.Hex(),
+		Creator:  event.Creator.Hex(),
 	}
 	return &ev
 }
 
-func MapOrderOrderUpdateRequest(event *requestLogger.RequestLoggerRequestStored) *events.OrderUpdateRequest {
-	// Spheron(TODO): when event is properly written in the contract replace id properly
-	ev := events.OrderUpdateRequest{
-		ID:       1,
-		NewPrice: 10,
-		Specs:    entities.DeploymentSpec{},
-	}
-	return &ev
-}
-
-func MapOrderUpdateConfirm(event *requestLogger.RequestLoggerRequestStored) *events.OrderUpdated {
-	// Spheron(TODO): when event is properly written in the contract replace id properly
-	ev := events.OrderUpdated{
-		ID: 1,
-	}
-	return &ev
-}
-
-func MapOrderClosed(event *requestLogger.RequestLoggerRequestStored) *events.OrderClosed {
-	// Spheron(TODO): when event is properly written in the contract replace id properly
+func MapOrderClosed(event *OrderMatching.OrderMatchingOrderClosed) *events.OrderClosed {
 	ev := events.OrderClosed{
-		ID: 1,
+		ID:       event.OrderId,
+		Provider: event.ProviderAddress.Hex(),
+		Creator:  event.TenantAddress.Hex(),
 	}
 	return &ev
 }
 
-func MapBidPlaced(event *requestLogger.RequestLoggerRequestStored) *events.BidPlaced {
-	// Spheron(TODO): when event is properly written in the contract replace id properly
-	ev := events.BidPlaced{
-		ID:       1,
-		BidPrice: 10,
-		Bidder:   "someone",
+func MapChainOrderToOrder(initialOrder *struct {
+	Id            uint64
+	Region        string
+	Uptime        uint64
+	Reputation    uint64
+	Slashes       uint64
+	MaxPrice      *big.Int
+	Token         string
+	Creator       common.Address
+	State         uint8
+	Specs         string
+	Version       string
+	CreationBlock *big.Int
+}) (*entities.Order, error) {
+	// Unmarshal the Resources JSON string
+	var deploymentSpec entities.DeploymentSpec
+	err := json.Unmarshal([]byte(initialOrder.Specs), &deploymentSpec)
+	if err != nil {
+		return &entities.Order{}, fmt.Errorf("failed to unmarshal resources: %w", err)
 	}
-	return &ev
+
+	// Map the order state
+	var state entities.OrderState
+	switch initialOrder.State {
+	case 1:
+		state = entities.OrderOpen
+	case 2:
+		state = entities.OrderActive
+	case 3:
+		state = entities.OrderClosed
+	default:
+		state = entities.OrderInvalid
+	}
+
+	// Map the initial order to the new order
+	order := entities.Order{
+		ID:         initialOrder.Id,
+		Region:     initialOrder.Region,
+		Uptime:     initialOrder.Uptime,
+		Reputation: initialOrder.Reputation,
+		Slashes:    initialOrder.Slashes,
+		MaxPrice:   initialOrder.MaxPrice.Uint64(),
+		Token:      initialOrder.Token,
+		Creator:    initialOrder.Creator.Hex(),
+		State:      state,
+		Specs:      deploymentSpec,
+	}
+
+	return &order, nil
+}
+
+func MapChainLeaseToLease(lease *struct {
+	ProviderAddress common.Address
+	TenantAddress   common.Address
+	ProviderId      *big.Int
+	AcceptedPrice   *big.Int
+	StartBlock      *big.Int
+	StartTime       *big.Int
+	EndBlock        *big.Int
+	EndTime         *big.Int
+	State           uint8
+}, orderId uint64) (*entities.Lease, error) {
+	// Map the order state
+	var state entities.OrderState
+	switch lease.State {
+	case 1:
+		state = entities.OrderOpen
+	case 2:
+		state = entities.OrderActive
+	case 3:
+		state = entities.OrderClosed
+	default:
+		state = entities.OrderInvalid
+	}
+
+	// Map the initial order to the new order
+	l := entities.Lease{
+		OrderID:       orderId,
+		Creator:       lease.TenantAddress.Hex(),
+		Provider:      lease.ProviderAddress.Hex(),
+		AcceptedPrice: lease.AcceptedPrice.Uint64(),
+		State:         state,
+	}
+	return &l, nil
+}
+
+func MapChainProviderToProvider(address string, region string, tokens []string, isActive bool, domain string) *entities.Provider {
+	return &entities.Provider{
+		WalletAddress: address,
+		Region:        region,
+		IsActive:      isActive,
+		Tokens:        tokens,
+		Domain:        domain,
+	}
 }

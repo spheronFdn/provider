@@ -1,8 +1,6 @@
 package event
 
 import (
-	sdk "github.com/cosmos/cosmos-sdk/types"
-
 	mani "github.com/akash-network/akash-api/go/manifest/v2beta2"
 	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
@@ -12,27 +10,20 @@ import (
 type LeaseWon struct {
 	LeaseID mtypes.LeaseID
 	Group   *dtypes.Group
-	Price   sdk.DecCoin
 }
 
 // ManifestReceived stores leaseID, manifest received, deployment and group details
 // to be provisioned by the Provider.
 type ManifestReceived struct {
-	LeaseID    mtypes.LeaseID
-	Manifest   *mani.Manifest
-	Deployment *dtypes.QueryDeploymentResponse
-	Group      *dtypes.Group
+	LeaseID  mtypes.LeaseID
+	Manifest *mani.Manifest
+	Group    *dtypes.Group
 }
 
 // ManifestGroup returns group if present in manifest or nil
 func (ev ManifestReceived) ManifestGroup() *mani.Group {
-	for _, mgroup := range *ev.Manifest {
-		if mgroup.Name == ev.Group.GroupSpec.Name {
-			mgroup := mgroup
-			return &mgroup
-		}
-	}
-	return nil
+	group := ev.Manifest.GetGroups()[0]
+	return &group
 }
 
 // ClusterDeploymentStatus represents status of the cluster deployment

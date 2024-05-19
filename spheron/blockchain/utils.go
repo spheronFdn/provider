@@ -1,7 +1,9 @@
 package blockchain
 
 import (
-	"github.com/akash-network/provider/spheron/blockchain/gen/OrderMatching"
+	"encoding/json"
+	"fmt"
+
 	"github.com/akash-network/provider/spheron/entities"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -14,20 +16,41 @@ func stringSliceToAddressSlice(stringSlice []string) []common.Address {
 	return addressSlice
 }
 
-func getMatchingResourceAttribute(res entities.Resources) OrderMatching.OrderMatchingResourceAttributes {
-	return OrderMatching.OrderMatchingResourceAttributes{
-		CpuUnits:      int64(res.CPU.Units),
-		CpuAttributes: nil,
-		RamUnits:      int64(res.Memory.Units),
-		RamAttributes: nil,
-		Volume: OrderMatching.OrderMatchingVolume{
-			Name:       res.Storage[0].Name,
-			Units:      int64(res.Storage[0].Units),
-			Attributes: nil,
-		},
-		GpuUnits:                int64(res.GPU.Units),
-		GpuAttributes:           nil,
-		EndpointsKind:           int32(res.Endpoints[0].Kind),
-		EndpointsSequenceNumber: int32(res.Endpoints[0].SequenceNumber),
+func getOrderSpec(spec entities.DeploymentSpec) string {
+
+	jsonString, err := json.Marshal(spec)
+	if err != nil {
+		fmt.Println("Error marshalling object:", err)
+		return ""
 	}
+
+	return string(jsonString)
+}
+
+// StringToAddress converts a string to common.Address
+func StringToAddress(str string) common.Address {
+	return common.HexToAddress(str)
+}
+
+// AddressToString converts a common.Address to string
+func AddressToString(address common.Address) string {
+	return address.Hex()
+}
+
+// StringsToAddresses converts a slice of strings to a slice of common.Address
+func StringsToAddresses(strs []string) []common.Address {
+	addresses := make([]common.Address, len(strs))
+	for i, str := range strs {
+		addresses[i] = StringToAddress(str)
+	}
+	return addresses
+}
+
+// AddressesToStrings converts a slice of common.Address to a slice of strings
+func AddressesToStrings(addresses []common.Address) []string {
+	strs := make([]string, len(addresses))
+	for i, address := range addresses {
+		strs[i] = AddressToString(address)
+	}
+	return strs
 }

@@ -11,8 +11,8 @@ import (
 
 func KeysCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "keys2",
-		Short: "Manage keys for spheron-provider",
+		Use:   "keys",
+		Short: "Manage keys",
 	}
 
 	cmd.AddCommand(
@@ -30,6 +30,8 @@ func AddKeyCommand() *cobra.Command {
 		RunE:  runAddCmd,
 	}
 	cmd.Flags().String(FlagHome, "", "location of home folder")
+	cmd.Flags().String(FlagKeySecret, "", "wallet passphrase")
+
 	return cmd
 }
 
@@ -40,9 +42,11 @@ func runAddCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	homeDir := cctx.HomeDir
+	secret, _ := cmd.Flags().GetString(FlagKeySecret)
+
 	name := args[0]
 
-	walletPath := homeDir + "/wallet.json"
+	walletPath := homeDir + "/" + name + ".json"
 	// check if wallet already exists
 	_, err = os.Stat(walletPath)
 	if err == nil {
@@ -51,7 +55,7 @@ func runAddCmd(cmd *cobra.Command, args []string) error {
 
 	// create account if not available
 	ks := keystore.NewKeyStore(homeDir, keystore.StandardScryptN, keystore.StandardScryptP)
-	acc, err := ks.NewAccount(name)
+	acc, err := ks.NewAccount(secret)
 	if err != nil {
 		return err
 	}

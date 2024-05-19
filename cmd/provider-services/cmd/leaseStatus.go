@@ -11,8 +11,8 @@ import (
 
 func leaseStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "lease-status",
-		Short:        "get lease status",
+		Use:          "deployment-status",
+		Short:        "get deployment status",
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {

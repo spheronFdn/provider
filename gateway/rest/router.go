@@ -3,7 +3,6 @@ package rest
 import (
 	"bufio"
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,17 +22,12 @@ import (
 	kubeVersion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/remotecommand"
 
-	"github.com/cosmos/cosmos-sdk/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/tendermint/tendermint/libs/log"
 
 	manifest "github.com/akash-network/akash-api/go/manifest/v2beta2"
 	manifestValidation "github.com/akash-network/akash-api/go/manifest/v2beta2"
-	dtypes "github.com/akash-network/akash-api/go/node/deployment/v1beta3"
 	mtypes "github.com/akash-network/akash-api/go/node/market/v1beta4"
-	"github.com/akash-network/akash-api/go/sdkutil"
 
-	"github.com/akash-network/node/pubsub"
 	"github.com/akash-network/node/util/wsutil"
 
 	"github.com/akash-network/provider"
@@ -88,7 +82,7 @@ func newRouter(log log.Logger, addr string, pclient provider.Client, ctxConfig m
 	// Spheron fix: hardcoded provider string instead of 'addr'
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			gcontext.Set(r, providerContextKey, "provider")
+			gcontext.Set(r, providerContextKey, addr)
 			next.ServeHTTP(w, r)
 		})
 	})
@@ -115,19 +109,6 @@ func newRouter(log log.Logger, addr string, pclient provider.Client, ctxConfig m
 
 	vrouter := router.NewRoute().Subrouter()
 	vrouter.Use(requireOwner())
-
-	// PUT
-	shperonRouter := router.PathPrefix(spheronPathPrefix).Subrouter()
-
-	shperonRouter.HandleFunc("/lease",
-		createLeasetCreateHandler(log, pclient.Bus())).
-		Methods(http.MethodPut)
-	shperonRouter.HandleFunc("/deployment/close",
-		createDeploymentCloseHandler(log, pclient.Bus())).
-		Methods(http.MethodDelete)
-	shperonRouter.HandleFunc("/deployment/update",
-		createDeploymentUpdateHandler(log, pclient.Bus())).
-		Methods(http.MethodPut)
 
 	hostnameRouter := router.PathPrefix(hostnamePrefix).Subrouter()
 	hostnameRouter.Use(requireOwner())
@@ -500,91 +481,6 @@ func createManifestHandler(log log.Logger, mclient pmanifest.Client) http.Handle
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-	}
-}
-
-func createDeploymentUpdateHandler(log log.Logger, bus pubsub.Bus) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-
-		defer func() {
-			_ = req.Body.Close()
-		}()
-
-		v, _ := hex.DecodeString("1")
-
-		bus.Publish(dtypes.EventDeploymentUpdated{Context: sdkutil.BaseModuleEvent{Module: "market", Action: "deployment-updated"}, ID: dtypes.DeploymentID{
-			Owner: "owner",
-			DSeq:  15,
-		}, Version: v,
-		})
-	}
-}
-
-func createLeasetCreateHandler(log log.Logger, bus pubsub.Bus) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		var request struct {
-			Dseq uint64 `json:"dseq"`
-		}
-
-		decoder := json.NewDecoder(req.Body)
-		defer func() {
-			_ = req.Body.Close()
-		}()
-
-		if err := decoder.Decode(&request); err != nil {
-			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
-			return
-		}
-
-		bus.Publish(mtypes.EventLeaseCreated{Context: sdkutil.BaseModuleEvent{Module: "market", Action: "lease-created"}, ID: mtypes.LeaseID{
-			Owner:    "owner",
-			DSeq:     request.Dseq,
-			GSeq:     1,
-			OSeq:     1,
-			Provider: "provider",
-		}, Price: sdk.DecCoin{
-			Denom:  "uakt",
-			Amount: types.OneDec(),
-		}})
-	}
-}
-
-func createDeploymentCloseHandler(log log.Logger, bus pubsub.Bus) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-
-		var request struct {
-			Dseq uint64 `json:"dseq"`
-		}
-
-		decoder := json.NewDecoder(req.Body)
-		defer func() {
-			_ = req.Body.Close()
-		}()
-
-		if err := decoder.Decode(&request); err != nil {
-			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
-			return
-		}
-
-		bus.Publish(dtypes.EventDeploymentClosed{Context: sdkutil.BaseModuleEvent{Module: "market", Action: "deployment-close"}, ID: dtypes.DeploymentID{
-			Owner: "owner",
-			DSeq:  request.Dseq,
-		}})
-		bus.Publish(mtypes.EventLeaseClosed{Context: sdkutil.BaseModuleEvent{Module: "market", Action: "lease-close"}, ID: mtypes.LeaseID{
-			Owner:    "owner",
-			DSeq:     request.Dseq,
-			GSeq:     1,
-			OSeq:     1,
-			Provider: "provider",
-		}, Price: sdk.DecCoin{
-			Denom:  "uakt",
-			Amount: types.OneDec(),
-		}})
-		bus.Publish(dtypes.EventGroupClosed{Context: sdkutil.BaseModuleEvent{Module: "market", Action: "deployment-close"}, ID: dtypes.GroupID{
-			Owner: "owner",
-			DSeq:  request.Dseq,
-			GSeq:  1,
-		}})
 	}
 }
 

@@ -32,11 +32,16 @@ func SendManifestCmd() *cobra.Command {
 
 	addCmdFlags(cmd)
 	cmd.Flags().StringP(flagOutput, "o", outputText, "output format text|json|yaml. default text")
+	cmd.Flags().Uint64(FlagDSeq, 0, "deployment sequence")
 
+	if err := cmd.MarkFlagRequired(FlagDSeq); err != nil {
+		panic(err.Error())
+	}
 	return cmd
 }
 
 func doSendManifest(cmd *cobra.Command, sdlpath string) error {
+	ctx := context.TODO()
 	sdl, err := sdl.ReadFile(sdlpath)
 	if err != nil {
 		return err
@@ -53,17 +58,24 @@ func doSendManifest(cmd *cobra.Command, sdlpath string) error {
 		return err
 	}
 	cctx, err := spheron.GetClientTxContext(cmd)
-	cl := spheron.NewClientWithContext(cctx)
+	spClient := spheron.NewClientWithContext(cctx)
 
 	submitFailed := false
 
-	// TODO(spheron) extract provider address from chain for lease via dseq
-	// TODO(spheron) take tls.Certificate when instanciating newClient (gclient, err := gwrest.NewClient(cl, prov, []tls.Certificate{cert}))
-	authToken, err := spheron.CreateAuthorizationToken(context.TODO(), &cctx)
+	lease, err := spClient.BcClient.GetLeaseById(ctx, dseq)
 	if err != nil {
 		return err
 	}
-	gclient, err := gwrest.NewClient(*cl, "provider", authToken)
+	fmt.Printf("Lease %v+", lease)
+	// if lease.State != entities.OrderActive {
+	// 	return errors.New("Lease is not active")
+	// }
+
+	authToken, err := spheron.CreateAuthorizationToken(ctx, &cctx)
+	if err != nil {
+		return err
+	}
+	gclient, err := gwrest.NewClient(*spClient, lease.Provider, authToken)
 	if err != nil {
 		return err
 	}

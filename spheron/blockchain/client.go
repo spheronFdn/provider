@@ -6,6 +6,7 @@ import (
 
 	"github.com/akash-network/provider/spheron/blockchain/gen/NodeProviderRegistry"
 	"github.com/akash-network/provider/spheron/blockchain/gen/OrderMatching"
+	"github.com/akash-network/provider/spheron/blockchain/gen/TokenRegistry"
 	"github.com/akash-network/provider/spheron/entities"
 	"github.com/akash-network/provider/tools/fromctx"
 
@@ -17,10 +18,14 @@ import (
 )
 
 type BlockChainClient struct {
-	EthClient    *ethclient.Client
-	Logger       log.Logger
-	ChainEventCh chan interface{}
-	Key          *keystore.Key
+	EthClient            *ethclient.Client
+	Logger               log.Logger
+	ChainEventCh         chan interface{}
+	Key                  *keystore.Key
+	Auth                 *bind.TransactOpts
+	NodeProviderRegistry *NodeProviderRegistry.NodeProviderRegistry
+	OrderMatching        *OrderMatching.OrderMatching
+	TokenRegistry        *TokenRegistry.TokenRegistry
 }
 
 type EventRequestBody struct {
@@ -28,41 +33,45 @@ type EventRequestBody struct {
 	Body      string `json:"body"`
 }
 
-func NewBlockChainClient(key *keystore.Key) *BlockChainClient {
+func NewBlockChainClient(key *keystore.Key) (*BlockChainClient, error) {
 	logger := fromctx.LogcFromCtx(context.Background())
 	client, err := ethclient.DialContext(context.Background(), "wss://spheron-devnet.rpc.caldera.xyz/ws") // Use WebSocket RPC endpoint
 	if err != nil {
-		logger.Error("unable to connect to spheron-devnet")
+		return nil, err
 	}
 
-	return &BlockChainClient{
-		EthClient:    client,
-		Logger:       logger,
-		ChainEventCh: make(chan interface{}),
-		Key:          key,
+	chainId, err := client.NetworkID(context.Background())
+	if err != nil {
+		return nil, err
 	}
+	auth, err := bind.NewKeyedTransactorWithChainID(key.PrivateKey, chainId)
+	if err != nil {
+		return nil, err
+	}
+
+	npr, err := NodeProviderRegistry.NewNodeProviderRegistry(common.HexToAddress(providerRegistryContract), client)
+	if err != nil {
+		return nil, err
+	}
+
+	om, err := OrderMatching.NewOrderMatching(common.HexToAddress(orderMatchingContract), client)
+
+	tkrg, err := TokenRegistry.NewTokenRegistry(common.HexToAddress(tokenRegistryContract), client)
+	return &BlockChainClient{
+		EthClient:            client,
+		Logger:               logger,
+		ChainEventCh:         make(chan interface{}),
+		Key:                  key,
+		Auth:                 auth,
+		NodeProviderRegistry: npr,
+		OrderMatching:        om,
+		TokenRegistry:        tkrg,
+	}, nil
 }
 
 // Provider contract
-
 func (b *BlockChainClient) AddNodeProvider(ctx context.Context, region string, paymentTokens []string) (string, error) {
-
-	chainId, err := b.EthClient.NetworkID(context.Background())
-	if err != nil {
-		return "", err
-	}
-
-	auth, err := bind.NewKeyedTransactorWithChainID(b.Key.PrivateKey, chainId)
-	if err != nil {
-		return "", err
-	}
-	contractAddress := common.HexToAddress(providerRegistryContract)
-
-	instance, err := NodeProviderRegistry.NewNodeProviderRegistry(contractAddress, b.EthClient)
-	if err != nil {
-		return "", err
-	}
-	tx, err := instance.AddNodeProvider(auth, region, b.Key.Address, paymentTokens)
+	tx, err := b.NodeProviderRegistry.AddNodeProvider(b.Auth, region, b.Key.Address, paymentTokens)
 	if err != nil {
 		return "", err
 	}
@@ -70,54 +79,30 @@ func (b *BlockChainClient) AddNodeProvider(ctx context.Context, region string, p
 }
 
 func (b *BlockChainClient) RemoveNodeProvider(ctx context.Context, id *big.Int) (string, error) {
-
-	chainId, err := b.EthClient.NetworkID(context.Background())
-	if err != nil {
-		return "", err
-	}
-
-	auth, err := bind.NewKeyedTransactorWithChainID(b.Key.PrivateKey, chainId)
-	if err != nil {
-		return "", err
-	}
-	// Todo:(spheron) change this to registerNode Contract
-	contractAddress := common.HexToAddress(providerRegistryContract)
-
-	instance, err := NodeProviderRegistry.NewNodeProviderRegistry(contractAddress, b.EthClient)
-	if err != nil {
-		return "", err
-	}
-	tx, err := instance.RemoveNodeProvider(auth, id)
+	tx, err := b.NodeProviderRegistry.RemoveNodeProvider(b.Auth, id)
 	if err != nil {
 		return "", err
 	}
 	return tx.Hash().Hex(), nil
 }
 
+func (b *BlockChainClient) GetProviderByAddress(ctx context.Context, address common.Address) (*entities.Provider, error) {
+	opts := &bind.CallOpts{
+		From: b.Key.Address, //TODO(spheron): check on this
+	}
+	_, region, paymentAccepted, isActive, err := b.NodeProviderRegistry.GetNodeProviderByAddress(opts, address)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO:(spheron) replace domain mock for provider
+	return MapChainProviderToProvider(address.Hex(), region, paymentAccepted, isActive, "https://localhost:8443"), nil
+}
+
 // Order contract
 func (b *BlockChainClient) CreateOrder(ctx context.Context, order *entities.Order) (string, error) {
-
-	chainId, err := b.EthClient.NetworkID(context.Background())
-	if err != nil {
-		return "", err
-	}
-
-	contractAddress := common.HexToAddress(orderMatchingContract)
-
-	instance, err := OrderMatching.NewOrderMatching(contractAddress, b.EthClient)
-	if err != nil {
-		return "", err
-	}
-
-	auth, err := bind.NewKeyedTransactorWithChainID(b.Key.PrivateKey, chainId)
-	if err != nil {
-		return "", err
-	}
-
-	tx, err := instance.CreateOrder(auth, order.Region, order.Uptime, order.Reputation, order.Slashes,
-		big.NewInt(int64(order.MaxPrice)), order.Token,
-		stringSliceToAddressSlice(order.Specs.PlacementsRequirement.ProviderWallets), 1, "test",
-		getMatchingResourceAttribute(order.Specs.Resources[0].Resources))
+	tx, err := b.OrderMatching.CreateOrder(b.Auth, order.Region, order.Uptime, order.Reputation, order.Slashes,
+		big.NewInt(int64(order.MaxPrice)), order.Token, getOrderSpec(order.Specs), "test")
 	if err != nil {
 		return "", err
 	}
@@ -125,53 +110,96 @@ func (b *BlockChainClient) CreateOrder(ctx context.Context, order *entities.Orde
 }
 
 func (b *BlockChainClient) GetOrderById(ctx context.Context, id uint64) (*entities.Order, error) {
-	// TODO(spheron): interact with blockchain
+	opts := &bind.CallOpts{
+		From: b.Key.Address,
+	}
 
-	return &entities.Order{
-		ID:         id,
-		Region:     "us-east",
-		Uptime:     0,
-		Reputation: 0,
-		Slashes:    0,
-		MaxPrice:   10,
-		Token:      "USDC",
-		Creator:    "owner",
-		State:      entities.OrderActive,
-		Specs:      entities.DeploymentSpec{},
-	}, nil
+	o, err := b.OrderMatching.Orders(opts, id)
+	if err != nil {
+		return nil, err
+	}
+
+	order, err := MapChainOrderToOrder(&o)
+	if err != nil {
+		return nil, err
+	}
+
+	return order, nil
+}
+
+func (b *BlockChainClient) GetLeaseById(ctx context.Context, id uint64) (*entities.Lease, error) {
+	opts := &bind.CallOpts{
+		From: b.Key.Address,
+	}
+
+	l, err := b.OrderMatching.Leases(opts, id)
+	if err != nil {
+		return nil, err
+	}
+
+	lease, err := MapChainLeaseToLease(&l, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return lease, nil
 }
 
 func (b *BlockChainClient) GetOrdersByProvider(ctx context.Context, provider string) ([]*entities.Order, error) {
-	// TODO(spheron): interact with blockchain
-	return []*entities.Order{
-		{
-			ID:         1,
-			Region:     "us-east",
-			Uptime:     0,
-			Reputation: 0,
-			Slashes:    0,
-			MaxPrice:   10,
-			Token:      "USDC",
-			Creator:    "owner",
-			State:      entities.OrderActive,
-			Specs:      entities.DeploymentSpec{},
-		},
-	}, nil
+	orders := []*entities.Order{}
+	opts := &bind.CallOpts{
+		From: b.Key.Address,
+	}
+
+	ids, err := b.OrderMatching.GetOrderByProvider(opts, common.HexToAddress(provider))
+	if err != nil {
+		return nil, err
+	}
+
+	for _, id := range ids {
+		o, err := b.OrderMatching.Orders(opts, id)
+		if err != nil {
+			return nil, err
+		}
+
+		order, err := MapChainOrderToOrder(&o)
+		if err != nil {
+			return nil, err
+		}
+		orders = append(orders, order)
+	}
+
+	return orders, nil
 }
 
 func (b *BlockChainClient) CloseOrder(ctx context.Context, id uint64) (string, error) {
-	// TODO(spheron): interact with blockchain
-	return "", nil
+	tx, err := b.OrderMatching.CloseOrder(b.Auth, id)
+	if err != nil {
+		return "", err
+	}
+	return tx.Hash().String(), nil
+}
+
+func (b *BlockChainClient) MatchOrder(ctx context.Context, orderId uint64, providerAddress common.Address, acceptedPrice *big.Int) (string, error) {
+	tx, err := b.OrderMatching.MatchOrder(b.Auth, orderId, providerAddress, acceptedPrice)
+	if err != nil {
+		return "", err
+	}
+	return tx.Hash().String(), nil
 }
 
 func (b *BlockChainClient) CreateBid(ctx context.Context, bid *entities.Bid) (string, error) {
-	// TODO(spheron): interact with blockchain
-	return "", nil
+
+	tx, err := b.OrderMatching.PlaceBid(b.Auth, bid.OrderID, big.NewInt(int64(bid.BidPrice)))
+	if err != nil {
+		return "", err
+	}
+
+	return tx.Hash().String(), nil
 }
 
 func (b *BlockChainClient) GetBid(ctx context.Context, id uint64) (*entities.Bid, error) {
 	// TODO(spheron): interact with blockchain
-
 	return &entities.Bid{
 		OrderID:  id,
 		BidPrice: 1,
@@ -182,6 +210,11 @@ func (b *BlockChainClient) GetBid(ctx context.Context, id uint64) (*entities.Bid
 // Token registry
 func (b *BlockChainClient) GetRegistedTokens(ctx context.Context) ([]string, error) {
 	// TODO(spheron): interact with blockchain
+	// opts := &bind.CallOpts{
+	// 	From: b.Key.Address, //TODO(spheron): check on this
+	// }
+	// ids, err := b.TokenRegistry())
+
 	tokens := []string{"USDT", "USDC"}
 	return tokens, nil
 }

@@ -571,9 +571,10 @@ loop:
 				if !res.OrderID().Equals(req.order) {
 					continue
 				}
-				if res.Resources().GetName() != req.resources.GetName() {
-					continue
-				}
+				// TODO(spheron): Check why it's important for Name parameter to match
+				// if res.Resources().GetName() != req.resources.GetName() {
+				// 	continue
+				// }
 				req.ch <- inventoryResponse{value: res}
 				inventoryRequestsCounter.WithLabelValues("lookup", "found").Inc()
 				continue loop

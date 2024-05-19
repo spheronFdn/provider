@@ -75,9 +75,12 @@ type ServiceLogs struct {
 
 // NewClient returns a new Client
 func NewClient(spheronClient spheron.Client, addr string, authToken string) (Client, error) {
-	// addres will be provider address so you need to check provider details and set client with provider uri*
-	// TODO(spheron): query the chain for provider details and return the client.
-	uri, err := url.Parse("https://localhost:8443")
+	pinfo, err := spheronClient.GetProviderByAddress(context.Background(), addr)
+	if err != nil {
+		return nil, err
+	}
+	// TODO(spheron): don't expect provider details on chain to contain port !
+	uri, err := url.Parse(pinfo.HostURI)
 	if err != nil {
 		return nil, err
 	}

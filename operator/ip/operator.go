@@ -539,7 +539,6 @@ func handleIPLeaseStatusGet(op *ipOperator, rw http.ResponseWriter, req *http.Re
 	}
 
 	owner := vars["owner"]
-	// TODO(spheron): check if owner address is valid
 
 	leaseID := mtypes.LeaseID{
 		Owner:    owner,

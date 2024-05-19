@@ -17,7 +17,7 @@ const (
 func ProviderCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "provider",
-		Short: "Manage keys for spheron-provider",
+		Short: "Provider registration",
 	}
 
 	cmd.AddCommand(
@@ -29,7 +29,7 @@ func ProviderCmd() *cobra.Command {
 
 func AddNodeProviderCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add --region=<region> --from=<wallet> --key-secret=<secret> --payment-token=<payment-token>",
+		Use:   "add --region=<region> --from=<wallet_path> --key-secret=<secret> --payment-token=<payment-token>",
 		Short: "Command to add a node provider to spheron",
 		RunE:  doAddNodeProvider,
 	}

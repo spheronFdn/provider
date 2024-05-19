@@ -24,8 +24,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	mparams "github.com/akash-network/akash-api/go/node/market/v1beta4"
-	ptypes "github.com/akash-network/akash-api/go/node/provider/v1beta3"
-	types_v1beta3 "github.com/akash-network/akash-api/go/node/types/v1beta3"
 
 	"github.com/akash-network/node/cmd/common"
 	"github.com/akash-network/node/pubsub"
@@ -112,11 +110,11 @@ var (
 	errInvalidConfig = errors.New("Invalid configuration")
 )
 
-// RunCmd launches the Akash Provider service
+// RunCmd launches Provider service
 func RunCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "run",
-		Short:        "run akash provider",
+		Short:        "run provider",
 		SilenceUsage: true,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			leaseFundsMonInterval := viper.GetDuration(FlagLeaseFundsMonitorInterval)
@@ -533,7 +531,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 	key := spheron.ReadKey(viper.GetString(FlagFrom), viper.GetString(FlagKeySecret))
 
 	if key == nil {
-		fmt.Errorf("Wallet not provided")
+		return errors.New("Wallet not provided")
 	}
 
 	spConfig := spheron.ClientConfig{
@@ -605,11 +603,12 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 	// 	return err
 	// }
 
-	pinfo := ptypes.Provider{
-		Owner:      "provider",
-		HostURI:    "https://localhost:8443",
-		Attributes: types_v1beta3.Attributes{types_v1beta3.Attribute{Key: "region", Value: "us-west"}, types_v1beta3.Attribute{Key: "capabilities/storage/1/persistent", Value: "true"}},
+	pinfo, err := spClient.GetProviderByAddress(ctx, spClient.Context.Key.Address.Hex())
+	if err != nil {
+		logger.Error("unable to setup provider ", err)
+		panic("failed to start provider")
 	}
+
 	fmt.Printf("pinfo %+v\n", pinfo)
 
 	// k8s client creation
@@ -641,7 +640,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	// TODO(spheron): Take block height from our chain !
 	currentBlockHeight := time.Now().Unix() // Add block height later
-	session := session.New(logger, &pinfo, spClient, currentBlockHeight)
+	session := session.New(logger, pinfo, spClient, currentBlockHeight)
 
 	// TODO(spheron): We can also call spheronClient.start() here if needed in future
 	// if err := cctx.Client.Start(); err != nil {
@@ -730,7 +729,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	operatorWaiter := waiter.NewOperatorWaiter(cmd.Context(), logger, waitClients...)
 
-	service, err := provider.NewService(ctx, spClient, "provider", session, bus, cclient, operatorWaiter, config)
+	service, err := provider.NewService(ctx, spClient, pinfo.Owner, session, bus, cclient, operatorWaiter, config)
 	if err != nil {
 		return err
 	}
@@ -742,7 +741,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		logger,
 		service,
 		gwaddr,
-		"provider",
+		pinfo.Owner,
 		[]tls.Certificate{tlsCert},
 		clusterSettings,
 	)
