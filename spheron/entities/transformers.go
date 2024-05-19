@@ -33,7 +33,6 @@ func TransformGroupToOrder(gs *dtypes.GroupSpec) *Order {
 		Slashes:    0,
 		MaxPrice:   gs.Price().Amount.BigInt().Uint64(),
 		Token:      gs.Price().Denom,
-		State:      OrderOpen,
 		Specs:      ds,
 	}
 }
@@ -185,7 +184,7 @@ func MapOrderToV1Order(order *Order) v1beta4.Order {
 			},
 			Attributes: MapAttributes(order.Specs.PlacementsRequirement.Attributes),
 		},
-		Resources: mapServiceResourcesToResourceUnits(order.Specs.Resources),
+		Resources: mapServiceResourcesToResourceUnits(order.Specs.Resources, order.Token, order.MaxPrice),
 	}
 
 	// Create the GroupID
@@ -207,10 +206,10 @@ func MapOrderToV1Order(order *Order) v1beta4.Order {
 	return group
 }
 
-func mapServiceResourcesToResourceUnits(resources ServiceResources) dtypes.ResourceUnits {
+func mapServiceResourcesToResourceUnits(resources ServiceResources, token string, maxPrice uint64) dtypes.ResourceUnits {
 	resourceUnits := make(dtypes.ResourceUnits, len(resources))
 	for i, r := range resources {
-		resourceUnits[i] = dtypes.ResourceUnit{
+		x := dtypes.ResourceUnit{
 			Resources: v1beta3.Resources{
 				ID:        r.Resources.ID,
 				CPU:       mapGroupCPUToOrderCPU(r.Resources.CPU),
@@ -221,11 +220,13 @@ func mapServiceResourcesToResourceUnits(resources ServiceResources) dtypes.Resou
 			},
 			Count: r.ReplicaCount,
 			Price: cosmostypes.DecCoin{
-				Denom:  "usd", // Adjust as needed
-				Amount: cosmostypes.OneDec(),
+				Denom:  token,
+				Amount: cosmostypes.NewDecFromInt(cosmostypes.NewIntFromUint64(maxPrice)),
 			},
 		}
+		resourceUnits[i] = x
 	}
+
 	return resourceUnits
 }
 
@@ -306,7 +307,7 @@ func MapOrderToGroup(order *Order) dtypes.Group {
 			},
 			Attributes: MapAttributes(order.Specs.PlacementsRequirement.Attributes),
 		},
-		Resources: mapServiceResourcesToResourceUnits(order.Specs.Resources),
+		Resources: mapServiceResourcesToResourceUnits(order.Specs.Resources, order.Token, order.MaxPrice),
 	}
 
 	// Create the GroupID
