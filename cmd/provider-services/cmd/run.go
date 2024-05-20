@@ -603,7 +603,8 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 	// 	return err
 	// }
 
-	pinfo, err := spClient.GetProviderByAddress(ctx, spClient.Context.Key.Address.Hex())
+	pinfo, tokens, err := spClient.GetProviderByAddress(ctx, spClient.Context.Key.Address.Hex())
+
 	if err != nil {
 		logger.Error("unable to setup provider ", err)
 		panic("failed to start provider")
@@ -640,7 +641,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	// TODO(spheron): Take block height from our chain !
 	currentBlockHeight := time.Now().Unix() // Add block height later
-	session := session.New(logger, pinfo, spClient, currentBlockHeight)
+	session := session.New(logger, pinfo, spClient, currentBlockHeight, tokens)
 
 	// TODO(spheron): We can also call spheronClient.start() here if needed in future
 	// if err := cctx.Client.Start(); err != nil {

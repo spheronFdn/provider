@@ -492,6 +492,11 @@ func (o *order) shouldBid(group *dtypes.Group) (bool, error) {
 		return false, nil
 	}
 
+	if !spheron.ArrayContainsString(o.session.AcceptedTokens(), group.GetGroupSpec().Price().Denom) {
+		o.log.Debug("unable to fulfill: incompatible order token")
+		return false, nil
+	}
+
 	attr, err := o.pass.GetAttributes()
 	if err != nil {
 		return false, err

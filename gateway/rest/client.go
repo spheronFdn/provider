@@ -75,7 +75,7 @@ type ServiceLogs struct {
 
 // NewClient returns a new Client
 func NewClient(spheronClient spheron.Client, addr string, authToken string) (Client, error) {
-	pinfo, err := spheronClient.GetProviderByAddress(context.Background(), addr)
+	pinfo, _, err := spheronClient.GetProviderByAddress(context.Background(), addr)
 	if err != nil {
 		return nil, err
 	}
