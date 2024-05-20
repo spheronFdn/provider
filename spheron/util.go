@@ -124,3 +124,12 @@ func ReadKey(walletPath string, password string) *keystore.Key {
 	}
 	return nil
 }
+
+func ArrayContainsString(slice []string, value string) bool {
+	for _, item := range slice {
+		if item == value {
+			return true
+		}
+	}
+	return false
+}

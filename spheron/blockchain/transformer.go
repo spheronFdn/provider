@@ -78,7 +78,7 @@ func MapChainOrderToOrder(initialOrder *struct {
 		Uptime:     initialOrder.Uptime,
 		Reputation: initialOrder.Reputation,
 		Slashes:    initialOrder.Slashes,
-		MaxPrice:   initialOrder.MaxPrice.Uint64(),
+		MaxPrice:   initialOrder.MaxPrice,
 		Token:      initialOrder.Token,
 		Creator:    initialOrder.Creator.Hex(),
 		State:      state,

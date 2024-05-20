@@ -318,7 +318,7 @@ func (pass *providerAttrSignatureService) fetch(ctx context.Context, auditor str
 	}
 
 	pass.session.Log().Info("fetching provider auditor attributes", "auditor", req.Auditor, pass.session.Client().Context.Key.Address.Hex(), req.Owner)
-	pinfo, err := pass.session.Client().GetProviderByAddress(ctx, pass.session.Client().Context.Key.Address.Hex())
+	pinfo, _, err := pass.session.Client().GetProviderByAddress(ctx, pass.session.Client().Context.Key.Address.Hex())
 	if err != nil {
 		pass.session.Log().Error("unable to setup provider ", err)
 		return auditedAttrResult{}

@@ -21,8 +21,9 @@ type Context struct {
 	// Output            io.Writer
 	// OutputFormat      string
 	// Height            int64
-	HomeDir string
-	Key     *keystore.Key
+	HomeDir        string
+	Key            *keystore.Key
+	AcceptedTokens []string
 	// KeyringDir string
 	// From              string
 	// BroadcastMode     string

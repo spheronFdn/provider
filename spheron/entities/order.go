@@ -1,12 +1,14 @@
 package entities
 
+import "math/big"
+
 type Order struct {
 	ID         uint64
 	Region     string
 	Uptime     uint64
 	Reputation uint64
 	Slashes    uint64
-	MaxPrice   uint64
+	MaxPrice   *big.Int
 	Token      string
 	Creator    string
 	State      OrderState
