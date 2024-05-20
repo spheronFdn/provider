@@ -3,6 +3,7 @@ package sdl
 import (
 	"errors"
 	"fmt"
+	"math/big"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"gopkg.in/yaml.v3"
@@ -29,10 +30,11 @@ func (sdl *v2Coin) UnmarshalYAML(node *yaml.Node) error {
 		return err
 	}
 
-	amount, err := sdk.NewDecFromStr(parsedCoin.Amount)
-	if err != nil {
-		return err
-	}
+	value := new(big.Int)
+	value.SetString(parsedCoin.Amount, 10) // base 10
+
+	//set precision to 18 so our value doesnt get multiplied by 18 in conversion
+	amount := sdk.NewDecFromBigIntWithPrec(value, 18) //read this function as: value has prec 18 so convert it like that (it wont add any 0)
 
 	if amount.IsZero() {
 		return fmt.Errorf("%w: amount is zero", errInvalidCoinAmount)

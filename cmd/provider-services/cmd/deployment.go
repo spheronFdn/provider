@@ -56,13 +56,19 @@ func runDeploymentCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	fmt.Println("sdlManifest: %v+", sdlManifest)
+
 	// TODO(spheron): make it so SDL can have only 1 group
 	groups, err := sdlManifest.DeploymentGroups()
 	if err != nil {
 		return err
 	}
 
+	fmt.Println("SDL: %v+", groups)
+
 	order := entities.TransformGroupToOrder(groups[0])
+
+	fmt.Println("order: %v+", order)
 
 	_, err = spCl.BcClient.CreateOrder(context.TODO(), order)
 	if err != nil {

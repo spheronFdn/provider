@@ -26,12 +26,13 @@ func TransformGroupToOrder(gs *dtypes.GroupSpec) *Order {
 	if !found {
 		reg = "us-west"
 	}
+
 	return &Order{
 		Region:     reg,
 		Uptime:     0,
 		Reputation: 0,
 		Slashes:    0,
-		MaxPrice:   gs.Price().Amount.BigInt().Uint64(),
+		MaxPrice:   gs.Price().Amount.BigInt(),
 		Token:      gs.Price().Denom,
 		Specs:      ds,
 	}
@@ -206,7 +207,7 @@ func MapOrderToV1Order(order *Order) v1beta4.Order {
 	return group
 }
 
-func mapServiceResourcesToResourceUnits(resources ServiceResources, token string, maxPrice uint64) dtypes.ResourceUnits {
+func mapServiceResourcesToResourceUnits(resources ServiceResources, token string, maxPrice *big.Int) dtypes.ResourceUnits {
 	resourceUnits := make(dtypes.ResourceUnits, len(resources))
 	for i, r := range resources {
 		x := dtypes.ResourceUnit{
@@ -221,7 +222,7 @@ func mapServiceResourcesToResourceUnits(resources ServiceResources, token string
 			Count: r.ReplicaCount,
 			Price: cosmostypes.DecCoin{
 				Denom:  token,
-				Amount: cosmostypes.NewDecFromInt(cosmostypes.NewIntFromUint64(maxPrice)),
+				Amount: cosmostypes.NewDecFromBigInt(maxPrice),
 			},
 		}
 		resourceUnits[i] = x

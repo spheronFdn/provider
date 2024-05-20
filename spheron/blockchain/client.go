@@ -102,7 +102,7 @@ func (b *BlockChainClient) GetProviderByAddress(ctx context.Context, address com
 // Order contract
 func (b *BlockChainClient) CreateOrder(ctx context.Context, order *entities.Order) (string, error) {
 	tx, err := b.OrderMatching.CreateOrder(b.Auth, order.Region, order.Uptime, order.Reputation, order.Slashes,
-		big.NewInt(int64(order.MaxPrice)), order.Token, getOrderSpec(order.Specs), "test")
+		order.MaxPrice, order.Token, getOrderSpec(order.Specs), "v1")
 	if err != nil {
 		return "", err
 	}
