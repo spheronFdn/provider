@@ -5,12 +5,20 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"sync"
 
+	gwrest "github.com/akash-network/provider/gateway/rest"
 	"github.com/akash-network/provider/spheron"
+	"github.com/akash-network/provider/spheron/blockchain/gen/OrderMatching"
 	"github.com/akash-network/provider/spheron/entities"
 	"github.com/akash-network/provider/spheron/sdl"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
+)
+
+var (
+	orderMatchedEvent *OrderMatching.OrderMatchingOrderMatched
+	waitForOrderMatch sync.WaitGroup
 )
 
 func DeploymentCmd() *cobra.Command {
@@ -56,24 +64,87 @@ func runDeploymentCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Println("sdlManifest: %v+", sdlManifest)
-
 	// TODO(spheron): make it so SDL can have only 1 group
 	groups, err := sdlManifest.DeploymentGroups()
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("SDL: %v+", groups)
-
 	order := entities.TransformGroupToOrder(groups[0])
 
-	fmt.Println("order: %v+", order)
+	fmt.Println("Waiting for ptovider bids..")
 
 	_, err = spCl.BcClient.CreateOrder(context.TODO(), order)
 	if err != nil {
 		return fmt.Errorf("Error while creating Deployment transaction")
 	}
+
+	// Subscribe to order matched event and wait
+	waitForOrderMatch.Add(1)
+	go waitForOrderMatchedEvent(cctx, spCl, sdlManifest)
+	waitForOrderMatch.Wait()
+
+	return nil
+}
+
+func waitForOrderMatchedEvent(cctx spheron.Context, spCl *spheron.Client, sdl sdl.SDL) {
+	defer waitForOrderMatch.Done()
+
+	// Assume this function subscribes and waits for the OrderMatchingOrderMatched event
+	orderMatchedEvent := <-spCl.BcClient.SubscribeToOrderMatched()
+
+	fmt.Println("Bid found.")
+
+	if orderMatchedEvent != nil {
+		fmt.Println("Sending manifest.")
+
+		sendManifest(cctx, spCl, sdl, orderMatchedEvent)
+	}
+}
+
+func sendManifest(cctx spheron.Context, spClient *spheron.Client, sdl sdl.SDL, orderMatchedEvent *OrderMatching.OrderMatchingOrderMatched) error {
+	ctx := context.TODO()
+
+	mani, err := sdl.Manifest()
+	if err != nil {
+		return err
+	}
+
+	submitFailed := false
+
+	lease, err := spClient.BcClient.GetLeaseById(ctx, orderMatchedEvent.OrderId)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Lease %v+", lease)
+	// if lease.State != entities.OrderActive {
+	// 	return errors.New("Lease is not active")
+	// }
+
+	authToken, err := spheron.CreateAuthorizationToken(ctx, &cctx)
+	if err != nil {
+		return err
+	}
+	gclient, err := gwrest.NewClient(*spClient, lease.Provider, authToken)
+	if err != nil {
+		return err
+	}
+	err = gclient.SubmitManifest(ctx, orderMatchedEvent.OrderId, mani)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Println("Manifest sent")
+
+	if err != nil {
+		return err
+	}
+
+	if submitFailed {
+		return errSubmitManifestFailed
+	}
+
 	return nil
 }
 
