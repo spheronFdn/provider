@@ -44,18 +44,19 @@ type keyPairManager struct {
 	homeDir       string
 }
 
-func NewKeyPairManager(fromAddress string, homeDir string) (KeyPairManager, error) {
-	// sig, _, err := cctx.Keyring.SignByAddress(fromAddress, []byte(fromAddress.String()))
-	// if err != nil {
-	// 	return nil, err
-	// }
-	sig := []byte("mockPassword")
+func NewKeyPairManager(address string, homeDir string, sctx *Context) (KeyPairManager, error) {
+	sig, err := SignMessage(sctx.Key, address) // sign wallet address as it's always going to be same
+	if err != nil {
+		return nil, err
+	}
 
-	return &keyPairManager{
-		addr:          fromAddress,
-		passwordBytes: sig,
+	kpm := keyPairManager{
+		addr:          address,
+		passwordBytes: []byte(sig),
 		homeDir:       homeDir,
-	}, nil
+	}
+
+	return &kpm, nil
 }
 
 func (kpm *keyPairManager) getKeyPath() string {
@@ -254,9 +255,8 @@ func (kpm *keyPairManager) readImpl(fin io.Reader) ([]byte, []byte, []byte, erro
 
 	var privKeyPlaintext []byte
 	var privKeyI interface{}
-	//TODO(spheron): Replace sig with signature of wallet address (down is example how it's do it with cosmosdk)
-	// sig, _, err := cctx.Keyring.SignByAddress(fromAddress, []byte(fromAddress.String())), sig.passwordBytes is used after that
-	sig := []byte("mockPassword")
+
+	sig := kpm.passwordBytes
 
 	// PKCS#8 header defined in RFC7468 section 11
 	// nolint: gocritic
