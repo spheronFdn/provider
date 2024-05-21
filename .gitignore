@@ -17,7 +17,7 @@ vendor/
 .cache/
 
 # goreleaser build dir
-dist
+#dist
 
 .idea/
 *.iml

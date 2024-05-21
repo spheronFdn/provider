@@ -1,0 +1,2 @@
+b2e25f9ecad3cefdfa6f6a1d8818cd19af5e1d59cf87133d2cf0bda97037d211  provider-services_0.5.12-SNAPSHOT-e34b0ff_linux_amd64
+5d685a972d6b60a640252a20f9d08836c4bb2bbb2909ad8ec522e32ad94e10a1  provider-services_0.5.12-SNAPSHOT-e34b0ff_linux_arm64
