@@ -1,1 +1,0 @@
-[{"inputs":[{"internalType":"address","name":"_provider","type":"address"}],"name":"getNodeProviderByAddress","outputs":[{"internalType":"uint256","name":"","type":"uint256"},{"internalType":"string","name":"","type":"string"},{"internalType":"address","name":"","type":"address"},{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"}]

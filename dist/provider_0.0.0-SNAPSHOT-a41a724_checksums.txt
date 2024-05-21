@@ -1,0 +1,2 @@
+1ce7eb7b9746fa04cfec73602be3d8c7c983a3bd5c743e00e3eca942ab60f42a  provider-services_0.0.0-SNAPSHOT-a41a724_linux_amd64
+bd4b346906903d140f700aa5b00e55a5c43e2668e398de7cdfa6d2d9a6cf7a22  provider-services_0.0.0-SNAPSHOT-a41a724_linux_arm64
