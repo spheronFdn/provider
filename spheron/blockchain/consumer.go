@@ -125,3 +125,22 @@ func (b *BlockChainClient) handleOrderClosed(event *OrderMatching.OrderMatchingO
 		return
 	}
 }
+
+func (b *BlockChainClient) SubscribeToOrderMatched() <-chan *OrderMatching.OrderMatchingOrderMatched {
+	contractAddress := common.HexToAddress(orderMatchingContract)
+	contract, err := OrderMatching.NewOrderMatching(contractAddress, b.EthClient)
+	if err != nil {
+		return nil
+	}
+
+	// Create a channel to receive order matched events
+	matchedCh := make(chan *OrderMatching.OrderMatchingOrderMatched)
+
+	// Subscribe to the OrderMatched events
+	_, err = contract.WatchOrderMatched(nil, matchedCh)
+	if err != nil {
+		return nil
+	}
+
+	return matchedCh
+}
