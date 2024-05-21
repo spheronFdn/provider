@@ -15,7 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-func SignMessage(key *keystore.Key, msg string) (interface{}, error) {
+func SignMessage(key *keystore.Key, msg string) (string, error) {
 	// Convert the message to a hash to be signed
 	hash := crypto.Keccak256Hash([]byte(msg)).Bytes()
 
@@ -116,7 +116,7 @@ func CreateAuthorizationToken(ctx context.Context, cctx *Context) (string, error
 	body := AuthJson{
 		Timestamp:       ts,
 		PubKey:          publicKeyHex,
-		SignedTimestamp: signedTimestamp.(string),
+		SignedTimestamp: signedTimestamp,
 	}
 	// Convert authToken to a base64-encoded string
 	authTokenBytes, err := json.Marshal(body)

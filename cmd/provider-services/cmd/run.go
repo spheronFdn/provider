@@ -563,7 +563,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		certFromFlag = bytes.NewBufferString(val)
 	}
 
-	kpm, err := spheron.NewKeyPairManager(spClient.Context.Key.Address.Hex(), spClient.Context.HomeDir)
+	kpm, err := spheron.NewKeyPairManager(spClient.Context.Key.Address.Hex(), spClient.Context.HomeDir, &spClient.Context)
 	if err != nil {
 		return err
 	}
