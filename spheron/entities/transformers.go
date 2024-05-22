@@ -222,7 +222,7 @@ func mapServiceResourcesToResourceUnits(resources ServiceResources, token string
 			Count: r.ReplicaCount,
 			Price: cosmostypes.DecCoin{
 				Denom:  token,
-				Amount: cosmostypes.NewDecFromBigInt(maxPrice),
+				Amount: cosmostypes.NewDecFromBigIntWithPrec(maxPrice, 18),
 			},
 		}
 		resourceUnits[i] = x

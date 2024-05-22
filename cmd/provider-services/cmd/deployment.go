@@ -71,7 +71,7 @@ func runDeploymentCmd(cmd *cobra.Command, args []string) error {
 
 	order := entities.TransformGroupToOrder(groups[0])
 
-	fmt.Println("Waiting for ptovider bids..")
+	fmt.Println("Waiting for provider bids..")
 
 	_, err = spCl.BcClient.CreateOrder(context.TODO(), order)
 	if err != nil {
@@ -85,9 +85,8 @@ func runDeploymentCmd(cmd *cobra.Command, args []string) error {
 	select {
 	case <-waitForOrderMatch:
 		fmt.Println("Order matched")
-	case <-time.After(10 * time.Second):
-		return fmt.Errorf("bids not received within 10 seconds")
-
+	case <-time.After(60 * time.Second):
+		return fmt.Errorf("Order was not matched within 60 seconds")
 	}
 	return nil
 }

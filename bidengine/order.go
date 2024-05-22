@@ -316,7 +316,6 @@ loop:
 
 			res := result.Value().(dtypes.Group)
 			group = &res
-			fmt.Printf("GROUP %+v\n", group)
 			o.log.Info("GROUP", "group", group)
 
 			shouldBidCh = runner.Do(func() runner.Result {

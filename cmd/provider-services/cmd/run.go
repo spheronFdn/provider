@@ -565,8 +565,10 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	pinfo, tokens, err := spClient.GetProviderByAddress(ctx, spClient.Context.Key.Address.Hex())
 	if err != nil {
-		return err
+		logger.Error("unable to setup provider ", err)
+		panic("failed to start provider")
 	}
+	fmt.Printf("pinfo %+v\n", pinfo)
 
 	kpm, err := spheron.NewKeyPairManager(spClient.Context.Key.Address.Hex(), spClient.Context.HomeDir, spClient.Context.Key)
 
@@ -587,13 +589,6 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	// TODO(spheron): Check if we need to publish the certificate on our chain ? Or we can generate new one always
 	// Check that the certificate exists on chain and is not revoked
-
-	if err != nil {
-		logger.Error("unable to setup provider ", err)
-		panic("failed to start provider")
-	}
-
-	fmt.Printf("pinfo %+v\n", pinfo)
 
 	// k8s client creation
 	kubeSettings := builder.NewDefaultSettings()

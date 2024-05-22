@@ -307,11 +307,11 @@ func calculatePriceRange(gspec *dtypes.GroupSpec) (sdk.DecCoin, sdk.DecCoin) {
 	}
 
 	if cmin.IsZero() {
-		cmin = sdk.NewDec(1)
+		cmin = sdk.NewDecWithPrec(1, 18)
 	}
 
 	if cmax.IsZero() {
-		cmax = sdk.NewDec(1)
+		cmax = sdk.NewDecWithPrec(1, 18)
 	}
 
 	return sdk.NewDecCoinFromDec(rmax.Denom, cmin), sdk.NewDecCoinFromDec(rmax.Denom, cmax)
