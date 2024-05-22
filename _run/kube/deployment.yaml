@@ -25,7 +25,7 @@ profiles:
   placement:
     westcoast:
       attributes:
-        region: us-west
+        region: canada
       pricing:
         web:
           denom: USDTT
