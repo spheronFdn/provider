@@ -20,6 +20,7 @@ import (
 	"go.step.sm/crypto/pemutil"
 
 	types "github.com/akash-network/akash-api/go/node/cert/v1beta3"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 
 	certerrors "github.com/akash-network/node/x/cert/errors"
 )
@@ -44,8 +45,8 @@ type keyPairManager struct {
 	homeDir       string
 }
 
-func NewKeyPairManager(address string, homeDir string, sctx *Context) (KeyPairManager, error) {
-	sig, err := SignMessage(sctx.Key, address) // sign wallet address as it's always going to be same
+func NewKeyPairManager(address string, homeDir string, key *keystore.Key) (KeyPairManager, error) {
+	sig, err := SignMessage(key, address) // sign wallet address as it's always going to be same
 	if err != nil {
 		return nil, err
 	}

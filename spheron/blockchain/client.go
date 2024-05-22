@@ -70,8 +70,8 @@ func NewBlockChainClient(key *keystore.Key) (*BlockChainClient, error) {
 }
 
 // Provider contract
-func (b *BlockChainClient) AddNodeProvider(ctx context.Context, region string, paymentTokens []string) (string, error) {
-	tx, err := b.NodeProviderRegistry.AddNodeProvider(b.Auth, region, b.Key.Address, paymentTokens)
+func (b *BlockChainClient) AddNodeProvider(ctx context.Context, provider *entities.Provider) (string, error) {
+	tx, err := b.NodeProviderRegistry.AddNodeProvider(b.Auth, provider.Region, b.Key.Address, provider.Tokens, marshalObj(provider.Attributes), provider.Domain)
 	if err != nil {
 		return "", err
 	}
@@ -90,19 +90,25 @@ func (b *BlockChainClient) GetProviderByAddress(ctx context.Context, address com
 	opts := &bind.CallOpts{
 		From: b.Key.Address, //TODO(spheron): check on this
 	}
-	_, region, paymentAccepted, isActive, err := b.NodeProviderRegistry.GetNodeProviderByAddress(opts, address)
+	_, region, attributes, hostUri, paymentAccepted, isActive, err := b.NodeProviderRegistry.GetNodeProviderByAddress(opts, address)
+
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO:(spheron) replace domain mock for provider
-	return MapChainProviderToProvider(address.Hex(), region, paymentAccepted, isActive, "https://localhost:8443"), nil
+	provider, err := MapChainProviderToProvider(address.Hex(), region, paymentAccepted, isActive, attributes, hostUri)
+	if err != nil {
+		return nil, err
+	}
+
+	return provider, nil
+
 }
 
 // Order contract
 func (b *BlockChainClient) CreateOrder(ctx context.Context, order *entities.Order) (string, error) {
 	tx, err := b.OrderMatching.CreateOrder(b.Auth, order.Region, order.Uptime, order.Reputation, order.Slashes,
-		order.MaxPrice, order.Token, getOrderSpec(order.Specs), "v1")
+		order.MaxPrice, order.Token, marshalObj(order.Specs), "v1")
 	if err != nil {
 		return "", err
 	}

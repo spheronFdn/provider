@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
-	"sync"
+	"time"
 
 	gwrest "github.com/akash-network/provider/gateway/rest"
 	"github.com/akash-network/provider/spheron"
@@ -18,7 +18,6 @@ import (
 
 var (
 	orderMatchedEvent *OrderMatching.OrderMatchingOrderMatched
-	waitForOrderMatch sync.WaitGroup
 )
 
 func DeploymentCmd() *cobra.Command {
@@ -54,7 +53,7 @@ func runDeploymentCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if cctx.Key == nil {
-		return fmt.Errorf("Transaction can not be created. Wallet needs to be injected")
+		return fmt.Errorf("transaction can not be created. Wallet needs to be injected")
 	}
 
 	spCl := spheron.NewClientWithContext(cctx)
@@ -76,30 +75,34 @@ func runDeploymentCmd(cmd *cobra.Command, args []string) error {
 
 	_, err = spCl.BcClient.CreateOrder(context.TODO(), order)
 	if err != nil {
-		return fmt.Errorf("Error while creating Deployment transaction")
+		return fmt.Errorf("error while creating Deployment transaction")
 	}
 
-	// Subscribe to order matched event and wait
-	waitForOrderMatch.Add(1)
-	go waitForOrderMatchedEvent(cctx, spCl, sdlManifest)
-	waitForOrderMatch.Wait()
+	waitForOrderMatch := make(chan bool)
 
+	// Subscribe to order matched event and wait
+	go waitForOrderMatchedEvent(cctx, spCl, sdlManifest, waitForOrderMatch)
+	select {
+	case <-waitForOrderMatch:
+		fmt.Println("Order matched")
+	case <-time.After(10 * time.Second):
+		return fmt.Errorf("bids not received within 10 seconds")
+
+	}
 	return nil
 }
 
-func waitForOrderMatchedEvent(cctx spheron.Context, spCl *spheron.Client, sdl sdl.SDL) {
-	defer waitForOrderMatch.Done()
-
+func waitForOrderMatchedEvent(cctx spheron.Context, spCl *spheron.Client, sdl sdl.SDL, done chan<- bool) {
 	// Assume this function subscribes and waits for the OrderMatchingOrderMatched event
 	orderMatchedEvent := <-spCl.BcClient.SubscribeToOrderMatched()
 
 	fmt.Println("Bid found.")
-
 	if orderMatchedEvent != nil {
 		fmt.Println("Sending manifest.")
 
 		sendManifest(cctx, spCl, sdl, orderMatchedEvent)
 	}
+	done <- true
 }
 
 func sendManifest(cctx spheron.Context, spClient *spheron.Client, sdl sdl.SDL, orderMatchedEvent *OrderMatching.OrderMatchingOrderMatched) error {

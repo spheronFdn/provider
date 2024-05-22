@@ -563,14 +563,21 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		certFromFlag = bytes.NewBufferString(val)
 	}
 
-	kpm, err := spheron.NewKeyPairManager(spClient.Context.Key.Address.Hex(), spClient.Context.HomeDir, &spClient.Context)
+	pinfo, tokens, err := spClient.GetProviderByAddress(ctx, spClient.Context.Key.Address.Hex())
 	if err != nil {
 		return err
 	}
+
+	kpm, err := spheron.NewKeyPairManager(spClient.Context.Key.Address.Hex(), spClient.Context.HomeDir, spClient.Context.Key)
+
+	if err != nil {
+		return err
+	}
+
 	startTime := time.Now().Truncate(time.Second)
 	validDuration := 24 * time.Hour
 	endTime := startTime.Add(validDuration)
-	domains := []string{"localhost"}
+	domains := []string{pinfo.HostURI}
 
 	kpm.Generate(startTime, endTime, domains)
 	_, tlsCert, err := kpm.ReadX509KeyPair(certFromFlag)
@@ -580,30 +587,6 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	// TODO(spheron): Check if we need to publish the certificate on our chain ? Or we can generate new one always
 	// Check that the certificate exists on chain and is not revoked
-	// cresp, err := cl.Query().Certificates(cmd.Context(), &ctypes.QueryCertificatesRequest{
-	// 	Filter: ctypes.CertificateFilter{
-	// 		Owner:  cctx.FromAddress.String(),
-	// 		Serial: x509cert.SerialNumber.String(),
-	// 		State:  "valid",
-	// 	},
-	// })
-	// if err != nil {
-	// 	return err
-	// }
-	// if len(cresp.Certificates) == 0 {
-	// 	return errors.Errorf("no valid found on chain certificate for account %s", cctx.FromAddress)
-	// }
-
-	// TODO(spheron): Fetch provider details from chain after provider registers !
-	// res, err := cl.Query().Provider(
-	// 	cmd.Context(),
-	// 	&ptypes.QueryProviderRequest{Owner: cctx.FromAddress.String()},
-	// )
-	// if err != nil {
-	// 	return err
-	// }
-
-	pinfo, tokens, err := spClient.GetProviderByAddress(ctx, spClient.Context.Key.Address.Hex())
 
 	if err != nil {
 		logger.Error("unable to setup provider ", err)

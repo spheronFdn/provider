@@ -11,37 +11,9 @@ import (
 // Context implements a typical context created in SDK modules for transaction
 // handling and queries.
 type Context struct {
-	// Deprecated: Codec codec will be changed to Codec: codec.Codec
-	// JSONCodec         codec.JSONCodec
-	// Codec             codec.Codec
-	// InterfaceRegistry codectypes.InterfaceRegistry
-	// Input             io.Reader
-	// Keyring        keyring.Keyring
-	// KeyringOptions []keyring.Option
-	// Output            io.Writer
-	// OutputFormat      string
-	// Height            int64
 	HomeDir        string
 	Key            *keystore.Key
 	AcceptedTokens []string
-	// KeyringDir string
-	// From              string
-	// BroadcastMode     string
-	// FromName          string
-	// SignModeStr       string
-	// UseLedger         bool
-	// Simulate          bool
-	// GenerateOnly      bool
-	// Offline           bool
-	// SkipConfirm       bool
-	// TxConfig          TxConfig
-	// AccountRetriever  AccountRetriever
-	// NodeURI           string
-	// FeeGranter        sdk.AccAddress
-	// Viper             *viper.Viper
-
-	// TODO: Deprecated (remove).
-	// LegacyAmino *codec.LegacyAmino
 }
 
 // WithHomeDir returns a copy of the Context with HomeDir set.

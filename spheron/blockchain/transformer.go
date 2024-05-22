@@ -123,12 +123,18 @@ func MapChainLeaseToLease(lease *struct {
 	return &l, nil
 }
 
-func MapChainProviderToProvider(address string, region string, tokens []string, isActive bool, domain string) *entities.Provider {
+func MapChainProviderToProvider(address string, region string, tokens []string, isActive bool, attributes string, domain string) (*entities.Provider, error) {
+	var pAttributes entities.Attributes
+	err := json.Unmarshal([]byte(attributes), &pAttributes)
+	if err != nil {
+		return &entities.Provider{}, fmt.Errorf("failed to unmarshal resources: %w", err)
+	}
 	return &entities.Provider{
 		WalletAddress: address,
 		Region:        region,
 		IsActive:      isActive,
-		Tokens:        tokens,
+		Tokens:        []string{"USDTT"}, // TODO(Spheron): pass tokens from function, dont mock
 		Domain:        domain,
-	}
+		Attributes:    pAttributes,
+	}, nil
 }

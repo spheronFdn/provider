@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/akash-network/provider/spheron/entities"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -16,9 +15,9 @@ func stringSliceToAddressSlice(stringSlice []string) []common.Address {
 	return addressSlice
 }
 
-func getOrderSpec(spec entities.DeploymentSpec) string {
+func marshalObj(obj interface{}) string {
 
-	jsonString, err := json.Marshal(spec)
+	jsonString, err := json.Marshal(obj)
 	if err != nil {
 		fmt.Println("Error marshalling object:", err)
 		return ""

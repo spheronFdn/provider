@@ -330,11 +330,11 @@ func MapOrderToGroup(order *Order) dtypes.Group {
 }
 
 func MapProviderToV3Provider(provider *Provider) *ptypes.Provider {
-	// TODO(spheron) remove this mock data
+	// TODO(spheron) remove this mock data types.Attributes{types.Attribute{Key: "region", Value: "us-west"}, types.Attribute{Key: "capabilities/storage/1/persistent", Value: "true"}},
 	p := &ptypes.Provider{
 		Owner:      provider.WalletAddress,
 		HostURI:    provider.Domain,
-		Attributes: types.Attributes{types.Attribute{Key: "region", Value: "us-west"}, types.Attribute{Key: "capabilities/storage/1/persistent", Value: "true"}},
+		Attributes: MapAttributes(provider.Attributes),
 	}
 	return p
 }

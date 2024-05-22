@@ -1,8 +1,8 @@
 package blockchain
 
 const (
-	providerRegistryContract = "0xEeB0598690fa56Fa89AcAa676190ef2114c61090"
-	orderMatchingContract    = "0xF59B2ab6A64DD92F63a3b640f7ff0b376E5def20"
+	providerRegistryContract = "0x96ca5955f25648fb44c5d772badb4313000c66fe"
+	orderMatchingContract    = "0x816413630c39780677E1584D4a6DbAFd76b161F7"
 	tokenRegistryContract    = "0xc2F0490021204B966828cc12ed48e564f095Cf4e"
 )
 

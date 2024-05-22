@@ -79,8 +79,7 @@ func NewClient(spheronClient spheron.Client, addr string, authToken string) (Cli
 	if err != nil {
 		return nil, err
 	}
-	// TODO(spheron): don't expect provider details on chain to contain port !
-	uri, err := url.Parse(pinfo.HostURI)
+	uri, err := url.Parse("https://" + pinfo.HostURI + ":8443/")
 	if err != nil {
 		return nil, err
 	}
