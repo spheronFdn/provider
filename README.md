@@ -1,4 +1,4 @@
-## Note: Not maintaining this anymore and stopped all the service related to this codebase
+## Note: Not maintaining this anymore and stopped all the services related to this codebase
 
 # Akash Provider Daemon
 
