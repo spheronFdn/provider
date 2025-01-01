@@ -1,3 +1,5 @@
+## Note: Not maintaining this anymore and stopped all the service related to this codebase
+
 # Akash Provider Daemon
 
 [![tests](https://github.com/akash-network/provider/actions/workflows/tests.yaml/badge.svg)](https://github.com/akash-network/provider/actions/workflows/tests.yaml)
